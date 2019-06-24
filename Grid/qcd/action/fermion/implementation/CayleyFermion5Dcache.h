@@ -52,6 +52,9 @@ CayleyFermion5D<Impl>::M5D(const FermionField &psi_i,
   auto psi = psi_i.View();
   auto phi = phi_i.View();
   auto chi = chi_i.View();
+  auto diag_v  = &diag[0];
+  auto upper_v = &upper[0];
+  auto lower_v = &lower[0];
   assert(phi.Checkerboard() == psi.Checkerboard());
 
   int Ls =this->Ls;
@@ -71,7 +74,7 @@ CayleyFermion5D<Impl>::M5D(const FermionField &psi_i,
       uint64_t idx_l = ss+((s+Ls-1)%Ls);
       spProj5m(tmp1,psi(idx_u));
       spProj5p(tmp2,psi(idx_l));
-      coalescedWrite(chi[ss+s],diag[s]*phi(ss+s)+upper[s]*tmp1+lower[s]*tmp2);
+      coalescedWrite(chi[ss+s],diag_v[s]*phi(ss+s)+upper_v[s]*tmp1+lower_v[s]*tmp2);
     }
   });
   M5Dtime+=usecond();
@@ -91,6 +94,9 @@ CayleyFermion5D<Impl>::M5Ddag(const FermionField &psi_i,
   auto psi = psi_i.View();
   auto phi = phi_i.View();
   auto chi = chi_i.View();
+  auto diag_v  = &diag[0];
+  auto upper_v = &upper[0];
+  auto lower_v = &lower[0];
   assert(phi.Checkerboard() == psi.Checkerboard());
 
   int Ls=this->Ls;
@@ -109,7 +115,7 @@ CayleyFermion5D<Impl>::M5Ddag(const FermionField &psi_i,
       uint64_t idx_l = ss+((s+Ls-1)%Ls);
       spProj5p(tmp1,psi(idx_u));
       spProj5m(tmp2,psi(idx_l));
-      coalescedWrite(chi[ss+s],diag[s]*phi(ss+s)+upper[s]*tmp1+lower[s]*tmp2);
+      coalescedWrite(chi[ss+s],diag_v[s]*phi(ss+s)+upper_v[s]*tmp1+lower_v[s]*tmp2);
     }
   });
   M5Dtime+=usecond();
@@ -124,7 +130,11 @@ CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi
 
   auto psi = psi_i.View();
   auto chi = chi_i.View();
-
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
   int Ls=this->Ls;
 
   MooeeInvCalls++;
@@ -140,27 +150,27 @@ CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi
     coalescedWrite(chi[ss],psi(ss)); // chi[0]=psi[0]
     for(int s=1;s<Ls;s++){
       spProj5p(tmp,chi(ss+s-1));  
-      coalescedWrite(chi[ss+s] , psi(ss+s)-lee[s-1]*tmp);
+      coalescedWrite(chi[ss+s] , psi(ss+s)-lee_v[s-1]*tmp);
     }
 
     // L_m^{-1} 
     for (int s=0;s<Ls-1;s++){ // Chi[ee] = 1 - sum[s<Ls-1] -leem[s]P_- chi
       spProj5m(tmp,chi(ss+s));    
-      coalescedWrite(chi[ss+Ls-1], chi(ss+Ls-1) - leem[s]*tmp);
+      coalescedWrite(chi[ss+Ls-1], chi(ss+Ls-1) - leem_v[s]*tmp);
     }
 
     // U_m^{-1} D^{-1}
     for (int s=0;s<Ls-1;s++){
       // Chi[s] + 1/d chi[s] 
       spProj5p(tmp,chi(ss+Ls-1)); 
-      coalescedWrite(chi[ss+s], (1.0/dee[s])*chi(ss+s)-(ueem[s]/dee[Ls-1])*tmp);
+      coalescedWrite(chi[ss+s], (1.0/dee_v[s])*chi(ss+s)-(ueem_v[s]/dee_v[Ls-1])*tmp);
     }	
-    coalescedWrite(chi[ss+Ls-1], (1.0/dee[Ls-1])*chi(ss+Ls-1));
+    coalescedWrite(chi[ss+Ls-1], (1.0/dee_v[Ls-1])*chi(ss+Ls-1));
       
     // Apply U^{-1}
     for (int s=Ls-2;s>=0;s--){
       spProj5m(tmp,chi(ss+s+1));  
-      coalescedWrite(chi[ss+s], chi(ss+s) - uee[s]*tmp);
+      coalescedWrite(chi[ss+s], chi(ss+s) - uee_v[s]*tmp);
     }
   });
 
@@ -178,7 +188,12 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
 
   auto psi = psi_i.View();
   auto chi = chi_i.View();
-
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
+  
   assert(psi.Checkerboard() == psi.Checkerboard());
 
   MooeeInvCalls++;
@@ -195,25 +210,25 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
     coalescedWrite(chi[ss],psi(ss));
     for (int s=1;s<Ls;s++){
       spProj5m(tmp,chi(ss+s-1));
-      coalescedWrite(chi[ss+s], psi(ss+s)-conjugate(uee[s-1])*tmp);
+      coalescedWrite(chi[ss+s], psi(ss+s)-conjugate(uee_v[s-1])*tmp);
     }
     // U_m^{-\dagger} 
     for (int s=0;s<Ls-1;s++){
       spProj5p(tmp,chi(ss+s));
-      coalescedWrite(chi[ss+Ls-1], chi(ss+Ls-1) - conjugate(ueem[s])*tmp);
+      coalescedWrite(chi[ss+Ls-1], chi(ss+Ls-1) - conjugate(ueem_v[s])*tmp);
     }
 
     // L_m^{-\dagger} D^{-dagger}
     for (int s=0;s<Ls-1;s++){
       spProj5m(tmp,chi(ss+Ls-1));
-      coalescedWrite(chi[ss+s], conjugate(1.0/dee[s])*chi(ss+s)-conjugate(leem[s]/dee[Ls-1])*tmp);
+      coalescedWrite(chi[ss+s], conjugate(1.0/dee_v[s])*chi(ss+s)-conjugate(leem_v[s]/dee_v[Ls-1])*tmp);
     }	
-    coalescedWrite(chi[ss+Ls-1], conjugate(1.0/dee[Ls-1])*chi(ss+Ls-1));
+    coalescedWrite(chi[ss+Ls-1], conjugate(1.0/dee_v[Ls-1])*chi(ss+Ls-1));
   
     // Apply L^{-dagger}
     for (int s=Ls-2;s>=0;s--){
       spProj5p(tmp,chi(ss+s+1));
-      coalescedWrite(chi[ss+s], chi(ss+s) - conjugate(lee[s])*tmp);
+      coalescedWrite(chi[ss+s], chi(ss+s) - conjugate(lee_v[s])*tmp);
     }
   });
   MooeeInvTime+=usecond();
