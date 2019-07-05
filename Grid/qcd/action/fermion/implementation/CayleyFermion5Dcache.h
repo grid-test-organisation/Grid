@@ -54,7 +54,8 @@ accelerator_inline void M5DInner(int ss, int Ls, const FermionFieldView &psi,
     uint64_t idx_l = ss+((s+Ls-1)%Ls);
     spProj5m(tmp1,psi(idx_u));
     spProj5p(tmp2,psi(idx_l));
-    coalescedWrite(chi[ss+s],diag[s]*phi(ss+s)+upper[s]*tmp1+lower[s]*tmp2);
+    // summing phi + P- first and then adding P+ is faster on GPU
+    coalescedWrite(chi[ss+s],(diag[s]*phi(ss+s)+upper[s]*tmp1)+lower[s]*tmp2);
   }
 }
 
@@ -73,7 +74,8 @@ accelerator_inline void M5DdagInner(int ss, int Ls, const FermionFieldView &psi,
     uint64_t idx_l = ss+((s+Ls-1)%Ls);
     spProj5p(tmp1,psi(idx_u));
     spProj5m(tmp2,psi(idx_l));
-    coalescedWrite(chi[ss+s],diag[s]*phi(ss+s)+upper[s]*tmp1+lower[s]*tmp2);
+    // summing phi + P- first and then adding P+ is faster on GPU
+    coalescedWrite(chi[ss+s],(diag[s]*phi(ss+s)+lower[s]*tmp2)+upper[s]*tmp1);
   }
 }
 
