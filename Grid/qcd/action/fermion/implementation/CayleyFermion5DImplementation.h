@@ -180,28 +180,34 @@ template<class Impl> void CayleyFermion5D<Impl>::CayleyReport(void)
     std::cout << GridLogMessage << "#### MooeeInv calls report " << std::endl;
     std::cout << GridLogMessage << "CayleyFermion5D Number of MooeeInv Calls     : " << MooeeInvCalls   << std::endl;
     std::cout << GridLogMessage << "CayleyFermion5D ComputeTime/Calls            : " << MooeeInvTime / MooeeInvCalls << " us" << std::endl;
-#ifdef GRID_NVCC
+
     RealD mflops = ( -16.*Nc*Ns+this->Ls*(1.+18.*Nc*Ns) )*volume*MooeeInvCalls/MooeeInvTime/2; // 2 for red black counting
     std::cout << GridLogMessage << "Average mflops/s per call                : " << mflops << std::endl;
     std::cout << GridLogMessage << "Average mflops/s per call per rank       : " << mflops/NP << std::endl;
-#else
-    // Flops = MADD * Ls *Ls *4dvol * spin/colour/complex
-    RealD mflops = 2.0*24*this->Ls*volume*MooeeInvCalls/MooeeInvTime/2; // 2 for red black counting
+  }
+  
+  if ( Meooe5DMooeeInvCalls > 0 ) {
+    
+    std::cout << GridLogMessage << "#### Meooe5DMooeeInv calls report " << std::endl;
+    std::cout << GridLogMessage << "CayleyFermion5D Number of Meooe5DMooeeInv Calls     : " << Meooe5DMooeeInvCalls   << std::endl;
+    std::cout << GridLogMessage << "CayleyFermion5D ComputeTime/Calls            : " << Meooe5DMooeeInvTime / Meooe5DMooeeInvCalls << " us" << std::endl;
+    
+    RealD mflops = (10.0*Nc*Ns - 16.*Nc*Ns + this->Ls*(1.+18.*Nc*Ns))
+        *volume*Meooe5DMooeeInvCalls/Meooe5DMooeeInvTime/2; // 2 for red black counting
     std::cout << GridLogMessage << "Average mflops/s per call                : " << mflops << std::endl;
     std::cout << GridLogMessage << "Average mflops/s per call per rank       : " << mflops/NP << std::endl;
-#endif
   }
 
 }
 template<class Impl> void CayleyFermion5D<Impl>::CayleyZeroCounters(void)
 {
   this->ZeroCounters();
-  M5Dflops=0;
   M5Dcalls=0;
   M5Dtime=0;
-  MooeeInvFlops=0;
   MooeeInvCalls=0;
   MooeeInvTime=0;
+  Meooe5DMooeeInvCalls=0;
+  Meooe5DMooeeInvTime=0;
 }
 
 template<class Impl>  

@@ -292,4 +292,101 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
   
 }
 
+template<class Impl>
+void
+CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out) {
+  
+  this->tmp().Checkerboard() = in.Checkerboard();
+  out.Checkerboard() = this->tmp().Checkerboard();
+  GridBase *grid=in.Grid();
+  
+  auto in_v  = in.View();
+  auto out_v = out.View();
+  auto tmp_v = this->tmp().View();
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
+  int Ls = this->Ls;
+  
+  Vector<Coeff_t> diag  = bs;
+  Vector<Coeff_t> upper = cs;
+  Vector<Coeff_t> lower = cs;
+  upper[Ls-1] = -mass*upper[Ls-1];
+  lower[0]    = -mass*lower[0];
+  auto diag_v  = &diag[0];
+  auto upper_v = &upper[0];
+  auto lower_v = &lower[0];
+  
+  Meooe5DMooeeInvCalls++;
+  Meooe5DMooeeInvTime-=usecond();
+  
+  uint64_t nloop = grid->oSites()/Ls;
+  
+  accelerator_for(sss,nloop,Simd::Nsimd(),{
+    uint64_t ss=sss*Ls;
+    MooeeInvInner(ss,Ls,in_v,tmp_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
+    M5DInner(ss,Ls,tmp_v,tmp_v,out_v,lower_v,diag_v,upper_v);
+  });
+  
+  Meooe5DMooeeInvTime+=usecond();
+  
+}
+
+template<class Impl>
+void
+CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionField &out) {
+  
+  this->tmp().Checkerboard() = in.Checkerboard();
+  out.Checkerboard() = this->tmp().Checkerboard();
+  GridBase *grid=in.Grid();
+  
+  auto in_v  = in.View();
+  auto out_v = out.View();
+  auto tmp_v = this->tmp().View();
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
+  int Ls = this->Ls;
+  
+  Vector<Coeff_t> diag  = bs;
+  Vector<Coeff_t> upper = cs;
+  Vector<Coeff_t> lower = cs;
+  for (int s=0;s<Ls;s++){
+    if ( s== 0 ) {
+      upper[s] = cs[s+1];
+      lower[s] =-mass*cs[Ls-1];
+    } else if ( s==(Ls-1) ) {
+      upper[s] =-mass*cs[0];
+      lower[s] = cs[s-1];
+    } else {
+      upper[s] = cs[s+1];
+      lower[s] = cs[s-1];
+    }
+    upper[s] = conjugate(upper[s]);
+    lower[s] = conjugate(lower[s]);
+    diag[s]  = conjugate(diag[s]);
+  }
+  auto diag_v  = &diag[0];
+  auto upper_v = &upper[0];
+  auto lower_v = &lower[0];
+  
+  Meooe5DMooeeInvCalls++;
+  Meooe5DMooeeInvTime-=usecond();
+  
+  uint64_t nloop = grid->oSites()/Ls;
+  
+  accelerator_for(sss,nloop,Simd::Nsimd(),{
+    uint64_t ss=sss*Ls;
+    M5DdagInner(ss,Ls,in_v,in_v,tmp_v,lower_v,diag_v,upper_v);
+    MooeeInvDagInner(ss,Ls,tmp_v,out_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
+  });
+  
+  Meooe5DMooeeInvTime+=usecond();
+  
+}
+
 NAMESPACE_END(Grid);

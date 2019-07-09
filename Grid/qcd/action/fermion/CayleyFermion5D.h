@@ -55,6 +55,10 @@ public:
   virtual void   M5D   (const FermionField &psi, FermionField &chi);
   virtual void   M5Ddag(const FermionField &psi, FermionField &chi);
 
+  // fused operations
+  virtual void  Meooe5DMooeeInv        (const FermionField& in, FermionField& out);
+  virtual void  MooeeInvDagMeooeDag5D  (const FermionField& in, FermionField& out);
+
   ///////////////////////////////////////////////////////////////
   // Physical surface field utilities
   ///////////////////////////////////////////////////////////////
@@ -151,13 +155,14 @@ public:
   void CayleyReport(void);
   void CayleyZeroCounters(void);
 
-  double M5Dflops;
   double M5Dcalls;
   double M5Dtime;
 
-  double MooeeInvFlops;
   double MooeeInvCalls;
   double MooeeInvTime;
+  
+  double Meooe5DMooeeInvTime;
+  double Meooe5DMooeeInvCalls;
 
 protected:
   virtual void SetCoefficientsZolotarev(RealD zolohi,Approx::zolotarev_data *zdata,RealD b,RealD c);
