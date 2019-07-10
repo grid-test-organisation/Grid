@@ -234,6 +234,7 @@ public:
   int face_table_computed;
   std::vector<Vector<std::pair<int,int> > > face_table ;
   Vector<int> surface_list;
+  Vector<int> interior_list;
 
   Vector<StencilEntry>  _entries; // Resident in managed memory
   std::vector<Packet> Packets;
@@ -629,7 +630,7 @@ public:
       }
       if(local == 0) { 
 	surface_list.push_back(site);
-      }
+      } else interior_list.push_back(site);
     }
   }
 
@@ -661,6 +662,7 @@ public:
 
     _unified_buffer_size=0;
     surface_list.resize(0);
+    interior_list.resize(0);
 
     int osites  = _grid->oSites();
     

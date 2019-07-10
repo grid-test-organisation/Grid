@@ -281,7 +281,8 @@ public:
     if ( timer4 ) std::cout << GridLogMessage << " timer4 " <<timer4 <<std::endl;
   }
 
-  std::vector<int> surface_list;
+  Vector<int> surface_list;
+  Vector<int> interior_list;
 
   WilsonStencil(GridBase *grid,
 		int npoints,
@@ -292,6 +293,7 @@ public:
   { 
     ZeroCountersi();
     surface_list.resize(0);
+    interior_list.resize(0);
     this->same_node.resize(npoints);
   };
 
@@ -312,7 +314,7 @@ public:
       }
       if(local == 0) { 
 	surface_list.push_back(site);
-      }
+      } else interior_list.push_back(site);
     }
   }
 
