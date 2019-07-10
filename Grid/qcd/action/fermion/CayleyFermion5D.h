@@ -56,8 +56,8 @@ public:
   virtual void   M5Ddag(const FermionField &psi, FermionField &chi);
 
   // fused operations
-  virtual void  Meooe5DMooeeInv        (const FermionField& in, FermionField& out);
-  virtual void  MooeeInvDagMeooeDag5D  (const FermionField& in, FermionField& out);
+  virtual void  Meooe5DMooeeInv        (const FermionField& in, FermionField& out, const Vector<int> &siteList = Vector<int>());
+  virtual void  MooeeInvDagMeooeDag5D  (const FermionField& in, FermionField& out, const Vector<int> &siteList = Vector<int>());
 
   ///////////////////////////////////////////////////////////////
   // Physical surface field utilities
