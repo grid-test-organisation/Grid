@@ -311,15 +311,19 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInvNB(const FermionField &in, FermionField &o
   auto dee_v  = &dee[0];
   int Ls = this->Ls;
   
-  Vector<Coeff_t> diag  = bs;
-  Vector<Coeff_t> upper = cs;
-  Vector<Coeff_t> lower = cs;
-  upper[Ls-1] = -mass*upper[Ls-1];
-  lower[0]    = -mass*lower[0];
-  auto diag_v  = &diag[0];
-  auto upper_v = &upper[0];
-  auto lower_v = &lower[0];
-  
+  //  --- FIXME ---
+  //  Vector<Coeff_t> diag  = bs;
+  //  Vector<Coeff_t> upper = cs;
+  //  Vector<Coeff_t> lower = cs;
+  //  upper[Ls-1] = -mass*upper[Ls-1];
+  //  lower[0]    = -mass*lower[0];
+  //  auto diag_v  = &diag[0];
+  //  auto upper_v = &upper[0];
+  //  auto lower_v = &lower[0];
+  auto diag_v  = &bs[0];
+  auto upper_v = &cs[0];
+  auto lower_v = &cs[0];
+
   Meooe5DMooeeInvCalls++;
   Meooe5DMooeeInvTime-=usecond();
   
