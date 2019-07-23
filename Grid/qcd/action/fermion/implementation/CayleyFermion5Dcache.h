@@ -295,7 +295,7 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
 // FIXME: one can get rid of tmp buffer and apply M5DInner in place by modifying M5DInner so that it can work with phi=chi=psi
 template<class Impl>
 void
-CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList) {
+CayleyFermion5D<Impl>::Meooe5DMooeeInvNB(const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList) {
   
   buf.Checkerboard() = in.Checkerboard();
   out.Checkerboard() = buf.Checkerboard();
@@ -325,7 +325,7 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out
   
   if ( siteList.empty() ) {
     uint64_t nloop = grid->oSites()/Ls;
-    accelerator_for(sss,nloop,Simd::Nsimd(),{
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
       uint64_t ss=sss*Ls;
       MooeeInvInner(ss,Ls,in_v,tmp_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
       M5DInner(ss,Ls,tmp_v,tmp_v,out_v,lower_v,diag_v,upper_v);
@@ -333,7 +333,7 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out
   } else {
     uint64_t nloop = siteList.size();
     auto siteList_v = &siteList[0];
-    accelerator_for(sss,nloop,Simd::Nsimd(),{
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
       uint64_t ss=siteList_v[sss]*Ls;
       MooeeInvInner(ss,Ls,in_v,tmp_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
       M5DInner(ss,Ls,tmp_v,tmp_v,out_v,lower_v,diag_v,upper_v);
@@ -403,7 +403,7 @@ CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionFiel
       MooeeInvDagInner(ss,Ls,tmp_v,out_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
     });
   }
-  
+
   Meooe5DMooeeInvTime+=usecond();
   
 }

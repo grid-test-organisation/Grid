@@ -56,7 +56,7 @@ public:
   virtual void   M5Ddag(const FermionField &psi, FermionField &chi);
 
   // fused operations
-  virtual void  Meooe5DMooeeInv        (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
+  virtual void  Meooe5DMooeeInvNB        (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
   virtual void  MooeeInvDagMeooeDag5D  (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
   virtual void  MeooeMooeeInv  (const FermionField& in, FermionField& out);
 

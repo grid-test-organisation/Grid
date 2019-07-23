@@ -392,7 +392,8 @@ template<class Impl>
 void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField &chi)
 {
   if ( WilsonKernelsStatic::Comms == WilsonKernelsStatic::CommsThenCompute ) {
-    Meooe5DMooeeInv(psi,this->tmp(),chi);
+    Meooe5DMooeeInvNB(psi,this->tmp(),chi);
+    accelerator_barrier();
     if ( psi.Checkerboard() == Odd ) {
       this->DhopEO(this->tmp(),chi,DaggerNo);
     } else {
@@ -415,8 +416,11 @@ void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField
       st = &(this->StencilEven);
       U = &(this->UmuOdd);
     }
+    int LLs = this->tmp().Grid()->_rdimensions[0];
+    int len = U->Grid()->oSites();
+    int Opt = WilsonKernelsStatic::Opt; // Why pass this. Kernels should know
     
-    Meooe5DMooeeInv(psi,this->tmp(),chi, st->surface_list);
+    Meooe5DMooeeInvNB(psi,this->tmp(),chi, st->surface_list);
     Meooe5DMooeeInvCalls--;
     
     this->DhopTotalTime-=usecond();
@@ -433,12 +437,9 @@ void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField
     this->DhopFaceTime+=usecond();
     this->DhopTotalTime+=usecond();
     
-    Meooe5DMooeeInv(psi,this->tmp(),chi, st->interior_list);
+    Meooe5DMooeeInvNB(psi,this->tmp(),chi, st->interior_list);
     
     this->DhopTotalTime-=usecond();
-    int LLs = this->tmp().Grid()->_rdimensions[0];
-    int len = U->Grid()->oSites();
-    int Opt = WilsonKernelsStatic::Opt; // Why pass this. Kernels should know
     this->DhopComputeTime-=usecond();
     this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,1,0);
     this->DhopComputeTime+=usecond();
