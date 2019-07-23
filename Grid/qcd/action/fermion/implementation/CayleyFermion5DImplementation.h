@@ -389,6 +389,78 @@ void CayleyFermion5D<Impl>::MeooeDag    (const FermionField &psi, FermionField &
 }
 
 template<class Impl>
+void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField &chi)
+{
+  if ( WilsonKernelsStatic::Comms == WilsonKernelsStatic::CommsThenCompute ) {
+    Meooe5DMooeeInv(psi,this->tmp(),chi);
+    if ( psi.Checkerboard() == Odd ) {
+      this->DhopEO(this->tmp(),chi,DaggerNo);
+    } else {
+      this->DhopOE(this->tmp(),chi,DaggerNo);
+    }
+  } else {
+    
+    Compressor compressor(DaggerNo);
+    StencilImpl* st;
+    DoubledGaugeField *U;
+    
+    this->DhopCalls++;
+    conformable(this->tmp().Grid(),this->FermionRedBlackGrid());
+    conformable(this->tmp().Grid(),chi.Grid());
+    
+    if ( psi.Checkerboard() == Odd ) {
+      st = &(this->StencilOdd);
+      U = &(this->UmuEven);
+    } else {
+      st = &(this->StencilEven);
+      U = &(this->UmuOdd);
+    }
+    
+    Meooe5DMooeeInv(psi,this->tmp(),chi, st->surface_list);
+    Meooe5DMooeeInvCalls--;
+    
+    this->DhopTotalTime-=usecond();
+    this->DhopFaceTime-=usecond();
+    st->HaloExchangeOptGather(this->tmp(),compressor);
+    this->DhopFaceTime+=usecond();
+    
+    this->DhopCommTime -=usecond();
+    std::vector<std::vector<CommsRequest_t> > requests;
+    st->CommunicateBegin(requests);
+    
+    this->DhopFaceTime-=usecond();
+    st->CommsMergeSHM(compressor);// Could do this inside parallel region overlapped with comms
+    this->DhopFaceTime+=usecond();
+    this->DhopTotalTime+=usecond();
+    
+    Meooe5DMooeeInv(psi,this->tmp(),chi, st->interior_list);
+    
+    this->DhopTotalTime-=usecond();
+    int LLs = this->tmp().Grid()->_rdimensions[0];
+    int len = U->Grid()->oSites();
+    int Opt = WilsonKernelsStatic::Opt; // Why pass this. Kernels should know
+    this->DhopComputeTime-=usecond();
+    this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,1,0);
+    this->DhopComputeTime+=usecond();
+    
+    st->CommunicateComplete(requests);
+    this->DhopCommTime   +=usecond();
+    
+    this->DhopFaceTime-=usecond();
+    st->CommsMerge(compressor);
+    this->DhopFaceTime+=usecond();
+    
+    this->DhopComputeTime2-=usecond();
+    this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
+    this->DhopComputeTime2+=usecond();
+    this->DhopTotalTime+=usecond();
+    
+    if ( psi.Checkerboard() == Odd ) chi.Checkerboard() = Even;
+    else                             chi.Checkerboard() = Odd;
+  }
+}
+
+template<class Impl>
 void  CayleyFermion5D<Impl>::Mdir (const FermionField &psi, FermionField &chi,int dir,int disp){
   Meo5D(psi,this->tmp());
   // Apply 4d dslash fragment

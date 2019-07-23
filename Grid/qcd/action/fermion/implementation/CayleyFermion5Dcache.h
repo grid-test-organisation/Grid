@@ -292,17 +292,18 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
   
 }
 
+// FIXME: one can get rid of tmp buffer and apply M5DInner in place by modifying M5DInner so that it can work with phi=chi=psi
 template<class Impl>
 void
-CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out, const Vector<int> &siteList) {
+CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList) {
   
-  this->tmp().Checkerboard() = in.Checkerboard();
-  out.Checkerboard() = this->tmp().Checkerboard();
+  buf.Checkerboard() = in.Checkerboard();
+  out.Checkerboard() = buf.Checkerboard();
   GridBase *grid=in.Grid();
   
   auto in_v  = in.View();
   auto out_v = out.View();
-  auto tmp_v = this->tmp().View();
+  auto tmp_v = buf.View();
   auto lee_v  = &lee[0];
   auto leem_v = &leem[0];
   auto uee_v  = &uee[0];
@@ -345,15 +346,15 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out
 
 template<class Impl>
 void
-CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionField &out, const Vector<int> &siteList) {
+CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList) {
   
-  this->tmp().Checkerboard() = in.Checkerboard();
-  out.Checkerboard() = this->tmp().Checkerboard();
+  buf.Checkerboard() = in.Checkerboard();
+  out.Checkerboard() = buf.Checkerboard();
   GridBase *grid=in.Grid();
   
   auto in_v  = in.View();
   auto out_v = out.View();
-  auto tmp_v = this->tmp().View();
+  auto tmp_v = buf.View();
   auto lee_v  = &lee[0];
   auto leem_v = &leem[0];
   auto uee_v  = &uee[0];
