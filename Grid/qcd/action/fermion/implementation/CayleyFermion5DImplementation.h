@@ -420,7 +420,7 @@ void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField
     int len = U->Grid()->oSites();
     int Opt = WilsonKernelsStatic::Opt; // Why pass this. Kernels should know
     
-    Meooe5DMooeeInvNB(psi,this->tmp(),chi, st->surface_list);
+    Meooe5DMooeeInvNB(psi,this->tmp(),chi, st->local_surface_list);
     Meooe5DMooeeInvCalls--;
     
     this->DhopTotalTime-=usecond();
@@ -437,7 +437,7 @@ void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField
     this->DhopFaceTime+=usecond();
     this->DhopTotalTime+=usecond();
     
-    Meooe5DMooeeInvNB(psi,this->tmp(),chi, st->interior_list);
+    Meooe5DMooeeInvNB(psi,this->tmp(),chi, st->local_interior_list);
     
     this->DhopTotalTime-=usecond();
     this->DhopComputeTime-=usecond();

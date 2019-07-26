@@ -234,7 +234,8 @@ public:
   int face_table_computed;
   std::vector<Vector<std::pair<int,int> > > face_table ;
   Vector<int> surface_list;
-  Vector<int> interior_list;
+  Vector<int> local_surface_list;
+  Vector<int> local_interior_list;
 
   Vector<StencilEntry>  _entries; // Resident in managed memory
   std::vector<Packet> Packets;
@@ -630,8 +631,27 @@ public:
       }
       if(local == 0) { 
 	surface_list.push_back(site);
-      } else interior_list.push_back(site);
+      }
     }
+  }
+  
+  template<class StencilImpl>
+  void BuildLocalSurfaceList(int Ls,int vol4, StencilImpl* stOther){
+    
+    assert(this->_checkerboard == !stOther->_checkerboard);
+    
+    for(int site = 0; site<vol4; site++){
+      int local = 1;
+      for(int point=0; point<this->_npoints; point++){
+        if( !(stOther->GetNodeLocal(site*Ls,point)) ) local = 0;
+      }
+      if(local == 0) this->local_surface_list.push_back(site);
+      else this->local_interior_list.push_back(site);
+    }
+    
+    std::cout << GridLogDebug << "*** Stencil initialisation: BuildLocalSurfaceList ***" << this->local_surface_list.size()  << std::endl;
+    std::cout << GridLogDebug << "local_surface_list  size = " << this->local_surface_list.size()  << std::endl;
+    std::cout << GridLogDebug << "local_interior_list size = " << this->local_interior_list.size() << std::endl;
   }
 
   CartesianStencil(GridBase *grid,
@@ -662,7 +682,8 @@ public:
 
     _unified_buffer_size=0;
     surface_list.resize(0);
-    interior_list.resize(0);
+    local_surface_list.resize(0);
+    local_interior_list.resize(0);
 
     int osites  = _grid->oSites();
     

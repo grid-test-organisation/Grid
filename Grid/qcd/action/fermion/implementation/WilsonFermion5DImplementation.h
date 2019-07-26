@@ -123,7 +123,10 @@ WilsonFermion5D<Impl>::WilsonFermion5D(GaugeField &_Umu,
 
   vol4=FourDimRedBlackGrid.oSites();
   StencilEven.BuildSurfaceList(LLs,vol4);
-   StencilOdd.BuildSurfaceList(LLs,vol4);
+  StencilOdd.BuildSurfaceList(LLs,vol4);
+
+  StencilEven.BuildLocalSurfaceList(LLs,vol4,&StencilOdd);
+  StencilOdd.BuildLocalSurfaceList (LLs,vol4,&StencilEven);
 
    //  std::cout << GridLogMessage << " SurfaceLists "<< Stencil.surface_list.size()
    //                       <<" " << StencilEven.surface_list.size()<<std::endl;
