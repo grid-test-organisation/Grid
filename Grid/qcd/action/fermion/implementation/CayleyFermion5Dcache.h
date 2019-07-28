@@ -49,15 +49,22 @@ accelerator_inline void M5DInner(int ss, int Ls, const FermionFieldView &psi,
                                  CoeffsPtr upper)
 {
   typedef decltype(coalescedRead(psi[0])) spinor;
-  spinor tmp1, tmp2;
-  for(int s=0;s<Ls;s++){
-    uint64_t idx_u = ss+((s+1)%Ls);
-    uint64_t idx_l = ss+((s+Ls-1)%Ls);
-    spProj5m(tmp1,psi(idx_u));
-    spProj5p(tmp2,psi(idx_l));
-    // summing phi + P- first and then adding P+ is faster on GPU
+  spinor tmp1, tmp2, saved, next;
+  
+  spProj5m(saved, psi(ss));
+  spProj5p(next, psi(ss));
+  spProj5m(tmp1, psi(ss+(1%Ls))); // needed in case Ls=1
+  spProj5p(tmp2, psi(ss+Ls-1));
+  // summing phi + P- first and then adding P+ is faster on GPU
+  coalescedWrite(chi[ss],(diag[0]*phi(ss)+upper[0]*tmp1)+lower[0]*tmp2);
+  
+  for(int s=1;s<Ls-1;s++){
+    spProj5m(tmp1, psi(ss+s+1));
+    tmp2 = next;
+    spProj5p(next, psi(ss+s));
     coalescedWrite(chi[ss+s],(diag[s]*phi(ss+s)+upper[s]*tmp1)+lower[s]*tmp2);
   }
+  if ( Ls > 1 ) coalescedWrite(chi[ss+Ls-1],(diag[Ls-1]*phi(ss+Ls-1)+upper[Ls-1]*saved)+lower[Ls-1]*next);
 }
 
 template<class FermionFieldView, class CoeffsPtr>
@@ -69,15 +76,23 @@ accelerator_inline void M5DdagInner(int ss, int Ls, const FermionFieldView &psi,
                                  CoeffsPtr upper)
 {
   typedef decltype(coalescedRead(psi[0])) spinor;
-  spinor tmp1, tmp2;
-  for(int s=0;s<Ls;s++){
-    uint64_t idx_u = ss+((s+1)%Ls);
-    uint64_t idx_l = ss+((s+Ls-1)%Ls);
-    spProj5p(tmp1,psi(idx_u));
-    spProj5m(tmp2,psi(idx_l));
-    // summing phi + P- first and then adding P+ is faster on GPU
+  spinor tmp1, tmp2, saved, next;
+  
+  spProj5p(saved, psi(ss));
+  spProj5m(next, psi(ss));
+  spProj5p(tmp1, psi(ss+(1%Ls))); // needed in case Ls=1
+  spProj5m(tmp2, psi(ss+Ls-1));
+  // summing phi + P- first and then adding P+ is faster on GPU
+  coalescedWrite(chi[ss],(diag[0]*phi(ss)+lower[0]*tmp2)+upper[0]*tmp1);
+  
+  for(int s=1;s<Ls-1;s++){
+    spProj5p(tmp1, psi(ss+s+1));
+    tmp2 = next;
+    spProj5m(next, psi(ss+s));
+    coalescedWrite(chi[ss+s],(diag[s]*phi(ss+s)+upper[s]*tmp1)+lower[s]*tmp2);
     coalescedWrite(chi[ss+s],(diag[s]*phi(ss+s)+lower[s]*tmp2)+upper[s]*tmp1);
   }
+  if ( Ls > 1 ) coalescedWrite(chi[ss+Ls-1],(diag[Ls-1]*phi(ss+Ls-1)+lower[Ls-1]*next)+upper[Ls-1]*saved);
 }
 
 template<class FermionFieldView, class CoeffsPtr>
