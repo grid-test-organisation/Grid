@@ -10,6 +10,7 @@ Author: Peter Boyle <pabobyle@ph.ed.ac.uk>
 Author: Peter Boyle <paboyle@ph.ed.ac.uk>
 Author: Peter Boyle <peterboyle@Peters-MacBook-Pro-2.local>
 Author: paboyle <paboyle@ph.ed.ac.uk>
+Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -311,18 +312,14 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInvNB(const FermionField &in, FermionField &o
   auto dee_v  = &dee[0];
   int Ls = this->Ls;
   
-  //  --- FIXME ---
-  //  Vector<Coeff_t> diag  = bs;
-  //  Vector<Coeff_t> upper = cs;
-  //  Vector<Coeff_t> lower = cs;
-  //  upper[Ls-1] = -mass*upper[Ls-1];
-  //  lower[0]    = -mass*lower[0];
-  //  auto diag_v  = &diag[0];
-  //  auto upper_v = &upper[0];
-  //  auto lower_v = &lower[0];
-  auto diag_v  = &bs[0];
-  auto upper_v = &cs[0];
-  auto lower_v = &cs[0];
+  Vector<Coeff_t> diag  = bs;
+  Vector<Coeff_t> upper = cs;
+  Vector<Coeff_t> lower = cs;
+  upper[Ls-1] = -mass*upper[Ls-1];
+  lower[0]    = -mass*lower[0];
+  auto diag_v  = &diag[0];
+  auto upper_v = &upper[0];
+  auto lower_v = &lower[0];
 
   Meooe5DMooeeInvCalls++;
   Meooe5DMooeeInvTime-=usecond();

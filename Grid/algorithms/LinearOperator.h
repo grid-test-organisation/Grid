@@ -8,6 +8,7 @@
 
 Author: Azusa Yamaguchi <ayamaguc@staffmail.ed.ac.uk>
 Author: Peter Boyle <paboyle@ph.ed.ac.uk>
+Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -280,8 +281,7 @@ public:
 	_Mat.Meooe(out,tmp);
 	_Mat.MooeeInv(tmp,out);
 	_Mat.Meooe(out,tmp);
-
-	return axpy_norm(out,-1.0,tmp,in);
+       return axpy_norm(out,-1.0,tmp,in);
       }
       virtual  RealD MpcDag   (const Field &in, Field &out){
 	Field tmp(in.Grid());

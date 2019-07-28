@@ -7,6 +7,7 @@
      Copyright (C) 2015
 
  Author: Peter Boyle <paboyle@ph.ed.ac.uk>
+ Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
      This program is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published by
@@ -635,6 +636,14 @@ public:
     }
   }
   
+  /*
+   Suppose this stencil is Even (Odd):
+   build the list of Even (Odd) sites that have to be shared with
+   other processors (whether or not on the same node) before
+   they are accessed through the stencil (-> local_surface_list).
+   This is done by calling the Odd (Even) stencil and
+   checking if the stencil call is local in all directions.
+   */
   template<class StencilImpl>
   void BuildLocalSurfaceList(int Ls,int vol4, StencilImpl* stOther){
     

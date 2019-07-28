@@ -14,6 +14,7 @@ Author: paboyle <paboyle@ph.ed.ac.uk>
 Author: Guido Cossu <guido.cossu@ed.ac.uk>
 Author: Andrew Lawson <andrew.lawson1991@gmail.com>
 Author: Vera Guelpers <V.M.Guelpers@soton.ac.uk>
+Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
