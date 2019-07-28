@@ -223,13 +223,7 @@ void CayleyFermion5D<Impl>::M5D   (const FermionField &psi, FermionField &chi)
 template<class Impl>
 void CayleyFermion5D<Impl>::Meooe5D    (const FermionField &psi, FermionField &Din)
 {
-  int Ls=this->Ls;
-  Vector<Coeff_t> diag = bs;
-  Vector<Coeff_t> upper= cs;
-  Vector<Coeff_t> lower= cs; 
-  upper[Ls-1]=-mass*upper[Ls-1];
-  lower[0]   =-mass*lower[0];
-  M5D(psi,psi,Din,lower,diag,upper);
+  M5D(psi,psi,Din,cs_lower,bs_diag,cs_upper);
 }
 // FIXME Redunant with the above routine; check this and eliminate
 template<class Impl> void CayleyFermion5D<Impl>::Meo5D     (const FermionField &psi, FermionField &chi)
@@ -306,27 +300,7 @@ void CayleyFermion5D<Impl>::M5Ddag (const FermionField &psi, FermionField &chi)
 template<class Impl>
 void CayleyFermion5D<Impl>::MeooeDag5D    (const FermionField &psi, FermionField &Din)
 {
-  int Ls=this->Ls;
-  Vector<Coeff_t> diag =bs;
-  Vector<Coeff_t> upper=cs;
-  Vector<Coeff_t> lower=cs; 
-
-  for (int s=0;s<Ls;s++){
-    if ( s== 0 ) {
-      upper[s] = cs[s+1];
-      lower[s] =-mass*cs[Ls-1];
-    } else if ( s==(Ls-1) ) { 
-      upper[s] =-mass*cs[0];
-      lower[s] = cs[s-1];
-    } else { 
-      upper[s] = cs[s+1];
-      lower[s] = cs[s-1];
-    }
-    upper[s] = conjugate(upper[s]);
-    lower[s] = conjugate(lower[s]);
-    diag[s]  = conjugate(diag[s]);
-  }
-  M5Ddag(psi,psi,Din,lower,diag,upper);
+  M5Ddag(psi,psi,Din,cs_lowerDag,bs_diagDag,cs_upperDag);
 }
 
 template<class Impl>
@@ -546,6 +520,12 @@ void CayleyFermion5D<Impl>::SetCoefficientsInternal(RealD zolo_hi,Vector<Coeff_t
   bs.resize(Ls);
   cs.resize(Ls);
   as.resize(Ls);
+  bs_diag.resize(Ls);
+  cs_upper.resize(Ls);
+  cs_lower.resize(Ls);
+  bs_diagDag.resize(Ls);
+  cs_upperDag.resize(Ls);
+  cs_lowerDag.resize(Ls);
   
   // 
   // Ts = (    [bs+cs]Dw        )^-1 (    (bs+cs) Dw         )
@@ -581,6 +561,31 @@ void CayleyFermion5D<Impl>::SetCoefficientsInternal(RealD zolo_hi,Vector<Coeff_t
     assert(omega[i]!=Coeff_t(0.0));
     bs[i] = 0.5*(bpc/omega[i] + bmc);
     cs[i] = 0.5*(bpc/omega[i] - bmc);
+  }
+
+  bs_diag  = bs;
+  cs_upper = cs;
+  cs_lower = cs;
+  cs_upper[Ls-1] = -mass*cs_upper[Ls-1];
+  cs_lower[0]    = -mass*cs_lower[0];
+  
+  bs_diagDag  = bs;
+  cs_upperDag = cs;
+  cs_lowerDag = cs;
+  for (int s=0;s<Ls;s++){
+    if ( s== 0 ) {
+      cs_upperDag[s] = cs[s+1];
+      cs_lowerDag[s] =-mass*cs[Ls-1];
+    } else if ( s==(Ls-1) ) {
+      cs_upperDag[s] =-mass*cs[0];
+      cs_lowerDag[s] = cs[s-1];
+    } else {
+      cs_upperDag[s] = cs[s+1];
+      cs_lowerDag[s] = cs[s-1];
+    }
+    cs_upperDag[s] = conjugate(cs_upperDag[s]);
+    cs_lowerDag[s] = conjugate(cs_lowerDag[s]);
+    bs_diagDag[s]  = conjugate(bs_diagDag[s]);
   }
 
   ////////////////////////////////////////////////////////

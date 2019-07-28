@@ -312,14 +312,9 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInvNB(const FermionField &in, FermionField &o
   auto dee_v  = &dee[0];
   int Ls = this->Ls;
   
-  Vector<Coeff_t> diag  = bs;
-  Vector<Coeff_t> upper = cs;
-  Vector<Coeff_t> lower = cs;
-  upper[Ls-1] = -mass*upper[Ls-1];
-  lower[0]    = -mass*lower[0];
-  auto diag_v  = &diag[0];
-  auto upper_v = &upper[0];
-  auto lower_v = &lower[0];
+  auto diag_v  = &bs_diag[0];
+  auto upper_v = &cs_upper[0];
+  auto lower_v = &cs_lower[0];
 
   Meooe5DMooeeInvCalls++;
   Meooe5DMooeeInvTime-=usecond();
@@ -363,27 +358,9 @@ CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionFiel
   auto dee_v  = &dee[0];
   int Ls = this->Ls;
   
-  Vector<Coeff_t> diag  = bs;
-  Vector<Coeff_t> upper = cs;
-  Vector<Coeff_t> lower = cs;
-  for (int s=0;s<Ls;s++){
-    if ( s== 0 ) {
-      upper[s] = cs[s+1];
-      lower[s] =-mass*cs[Ls-1];
-    } else if ( s==(Ls-1) ) {
-      upper[s] =-mass*cs[0];
-      lower[s] = cs[s-1];
-    } else {
-      upper[s] = cs[s+1];
-      lower[s] = cs[s-1];
-    }
-    upper[s] = conjugate(upper[s]);
-    lower[s] = conjugate(lower[s]);
-    diag[s]  = conjugate(diag[s]);
-  }
-  auto diag_v  = &diag[0];
-  auto upper_v = &upper[0];
-  auto lower_v = &lower[0];
+  auto diag_v  = &bs_diagDag[0];
+  auto upper_v = &cs_upperDag[0];
+  auto lower_v = &cs_lowerDag[0];
   
   Meooe5DMooeeInvCalls++;
   Meooe5DMooeeInvTime-=usecond();

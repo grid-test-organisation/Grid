@@ -126,6 +126,12 @@ public:
   Vector<Coeff_t> bs;    // S dependent coeffs
   Vector<Coeff_t> cs;
   Vector<Coeff_t> as;
+  Vector<Coeff_t> bs_diag;
+  Vector<Coeff_t> cs_upper;
+  Vector<Coeff_t> cs_lower;
+  Vector<Coeff_t> bs_diagDag;
+  Vector<Coeff_t> cs_upperDag;
+  Vector<Coeff_t> cs_lowerDag;
   // For preconditioning Cayley form
   Vector<Coeff_t> bee;
   Vector<Coeff_t> cee;
