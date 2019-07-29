@@ -29,15 +29,17 @@ Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
 using namespace std;
 using namespace Grid;
- ;
 
 int main (int argc, char ** argv)
 {
   Grid_init(&argc,&argv);
 
   int threads = GridThread::GetThreads();
-  std::cout<< GridLogMessage << "Grid is setup to use " << threads << " threads and " << gpu_threads << " gpu-threads per block" << std::endl;
-
+  std::cout<< GridLogMessage << "Grid is setup to use " << threads << " threads" << std::endl;
+#ifdef GRID_NVCC
+  std::cout<< GridLogMessage << "Grid is setup to use " << gpu_threads << " gpu-threads per block" << std::endl;
+#endif
+  
   Coordinate mpi_layout  = GridDefaultMpi();
   Coordinate default_latt = GridDefaultLatt();
   Coordinate latt4 ({default_latt[0]*mpi_layout[0], default_latt[1]*mpi_layout[1], default_latt[2]*mpi_layout[2], default_latt[3]*mpi_layout[3]});
@@ -91,6 +93,10 @@ int main (int argc, char ** argv)
   r_o = Zero();
 
   auto ref = r_o;
+  auto tmp_o = r_o;
+  
+  DomainWallFermionR Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5);
+  //  MobiusFermionR Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5,1.5,0.5);
   
 #define PRINT(r,A) \
   if(latt4[0]==4) {\
@@ -118,15 +124,15 @@ int main (int argc, char ** argv)
   std::cout << GridLogMessage << "$ Called " #A " "<< (t1-t0)/ncall << " us" << std::endl;\
   std::cout << GridLogMessage << "******************"<<std::endl;
 
-#define BENCH_FUS_R(report,A,B,...)      \
-  B(__VA_ARGS__);        \
-  A(__VA_ARGS__);        \
+#define BENCH_FUS_R(report,A,B,in,out,tmp)      \
+  B(in,tmp);        \
+  A(tmp,out);        \
   FGrid->Barrier();        \
   if(report) Dw.CayleyZeroCounters();      \
   t0=usecond();        \
   for(int i=0;i<ncall;i++){      \
-    B(__VA_ARGS__);        \
-    A(__VA_ARGS__);        \
+    B(in,tmp);        \
+    A(tmp,out);        \
   }            \
   t1=usecond();        \
   FGrid->Barrier();        \
@@ -143,11 +149,7 @@ int main (int argc, char ** argv)
   r_o -= ref; \
   std::cout << GridLogMessage << "norm diff = " << norm2(r_o) << " (ref was " << norm2(ref) << ")" << std::endl; \
   std::cout<<GridLogMessage << "******************" << std::endl;
-  
-  /*******************************************/
-  DomainWallFermionR Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5);
-//  MobiusFermionR Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5,1.5,0.5);
-  
+
   std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
   std::cout << GridLogMessage<< "* Benchmarking Cayley 5D functions"<<std::endl;
   std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
@@ -170,17 +172,16 @@ int main (int argc, char ** argv)
   std::cout << GridLogMessage<< "* Benchmarking Cayley 5D FUSED functions"<<std::endl;
   std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
   
-  BENCH_FUS(Dw.Meooe5D,Dw.MooeeInv,src_o,r_o);
+  BENCH_FUS(Dw.Meooe5D,Dw.MooeeInv,src_o,r_o,tmp_o);
   ref = r_o;
   BENCH(Dw.Meooe5DMooeeInv,src_o,r_o);
   COMPARE(r_o,ref);
 
-  BENCH_FUS(Dw.MooeeInvDag,Dw.MeooeDag5D,src_o,r_o);
+  BENCH_FUS(Dw.MooeeInvDag,Dw.MeooeDag5D,src_o,r_o,tmp_o);
   ref = r_o;
   BENCH(Dw.MooeeInvDagMeooeDag5D,src_o,r_o);
   COMPARE(r_o,ref);
-  
-  
+
   std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
   std::cout << GridLogMessage<< "* Benchmarking fused kernels for RH preconditioning"<<std::endl;
   std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
