@@ -310,7 +310,7 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
 
 template<class Impl>
 void
-CayleyFermion5D<Impl>::Meooe5DMooeeInvNB(const FermionField &in, FermionField &out, const Vector<int> &siteList) {
+CayleyFermion5D<Impl>::Meooe5DMooeeInv(const FermionField &in, FermionField &out, const Vector<int> &siteList) {
   
   out.Checkerboard() = in.Checkerboard();
   GridBase *grid=in.Grid();
@@ -333,7 +333,7 @@ CayleyFermion5D<Impl>::Meooe5DMooeeInvNB(const FermionField &in, FermionField &o
   
   if ( siteList.empty() ) {
     uint64_t nloop = grid->oSites()/Ls;
-    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
       uint64_t ss=sss*Ls;
       MooeeInvInner(ss,Ls,in_v,out_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
       M5DInner(ss,Ls,out_v,out_v,out_v,lower_v,diag_v,upper_v);
@@ -385,7 +385,7 @@ CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionFiel
   } else {
     uint64_t nloop = siteList.size();
     auto siteList_v = &siteList[0];
-    accelerator_for(sss,nloop,Simd::Nsimd(),{
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
       uint64_t ss=siteList_v[sss]*Ls;
       M5DdagInner(ss,Ls,in_v,in_v,out_v,lower_v,diag_v,upper_v);
       MooeeInvDagInner(ss,Ls,out_v,out_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
