@@ -102,7 +102,7 @@ int main (int argc, char ** argv)
   if(latt4[0]==4) {\
     r_eo = Zero(); \
     setCheckerboard(r_eo,r); \
-    std::cout << "--- RESULT Dw." #A " ---" <<std::endl; \
+    std::cout << "--- RESULT " #A " ---" <<std::endl; \
     std::cout << r_eo           <<std::endl; \
     std::cout << "--------------" <<std::endl; \
   }
