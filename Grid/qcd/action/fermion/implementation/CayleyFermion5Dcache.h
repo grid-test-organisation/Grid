@@ -372,16 +372,16 @@ CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionFiel
   auto upper_v = &cs_upperDag[0];
   auto lower_v = &cs_lowerDag[0];
   
-  Meooe5DMooeeInvCalls++;
-  Meooe5DMooeeInvTime-=usecond();
-  
   if ( siteList.empty() ) {
+    Meooe5DMooeeInvCalls++;
+    Meooe5DMooeeInvTime-=usecond();
     uint64_t nloop = grid->oSites()/Ls;
     accelerator_for(sss,nloop,Simd::Nsimd(),{
       uint64_t ss=sss*Ls;
       M5DdagInner(ss,Ls,in_v,in_v,out_v,lower_v,diag_v,upper_v);
       MooeeInvDagInner(ss,Ls,out_v,out_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
     });
+    Meooe5DMooeeInvTime+=usecond();
   } else {
     uint64_t nloop = siteList.size();
     auto siteList_v = &siteList[0];
@@ -391,8 +391,6 @@ CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D(const FermionField &in, FermionFiel
       MooeeInvDagInner(ss,Ls,out_v,out_v,dee_v,uee_v,ueem_v,lee_v,leem_v);
     });
   }
-
-  Meooe5DMooeeInvTime+=usecond();
   
 }
 

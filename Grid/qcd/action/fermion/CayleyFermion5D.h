@@ -176,6 +176,49 @@ public:
   double Meooe5DMooeeInvTime;
   double Meooe5DMooeeInvCalls;
 
+#ifdef GRID_NVCC
+
+#define CREATE_CUSTOM_TIMER(NAME, INDEX)  \
+  cudaEvent_t NAME ## _start ## INDEX; \
+  cudaEvent_t NAME ## _stop  ## INDEX;
+
+#define INITIALISE_CUSTOM_TIMER(NAME, INDEX)  \
+  cudaEventCreate(&(NAME ## _start ## INDEX)); \
+  cudaEventCreate(&(NAME ## _stop  ## INDEX));
+  
+#define CUSTOM_TIMER_START(NAME, INDEX) cudaEventRecord(NAME ##_start ## INDEX);
+#define CUSTOM_TIMER_STOP(NAME, INDEX) cudaEventRecord(NAME ##_stop  ## INDEX);
+
+#define CUSTOM_TIMER_UPDATE(NAME, INDEX) \
+  { \
+    float ms; \
+    cudaEventElapsedTime(&ms, NAME ##_start ## INDEX, NAME ##_stop ## INDEX); \
+    this->NAME += 1000*ms; \
+  }
+
+  CREATE_CUSTOM_TIMER(Meooe5DMooeeInvTime,1);
+  CREATE_CUSTOM_TIMER(Meooe5DMooeeInvTime,2);
+
+  CREATE_CUSTOM_TIMER(DhopFaceTime,1);
+  CREATE_CUSTOM_TIMER(DhopFaceTime,2);
+  CREATE_CUSTOM_TIMER(DhopFaceTime,3);
+
+  CREATE_CUSTOM_TIMER(DhopTotalTime,1);
+  CREATE_CUSTOM_TIMER(DhopTotalTime,2);
+
+  CREATE_CUSTOM_TIMER(DhopComputeTime,1);
+  CREATE_CUSTOM_TIMER(DhopComputeTime,2);
+
+#else
+  
+#define CREATE_CUSTOM_TIMER(NAME, INDEX)
+#define INITIALISE_CUSTOM_TIMER(NAME, INDEX)
+#define CUSTOM_TIMER_START(NAME, INDEX) this->NAME-=usecond();
+#define CUSTOM_TIMER_STOP(NAME, INDEX) this->NAME+=usecond();
+#define CUSTOM_TIMER_UPDATE(NAME, INDEX)
+  
+#endif
+
 protected:
   virtual void SetCoefficientsZolotarev(RealD zolohi,Approx::zolotarev_data *zdata,RealD b,RealD c);
   virtual void SetCoefficientsTanh(Approx::zolotarev_data *zdata,RealD b,RealD c);

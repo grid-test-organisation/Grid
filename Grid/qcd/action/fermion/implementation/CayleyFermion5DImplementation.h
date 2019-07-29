@@ -49,7 +49,19 @@ CayleyFermion5D<Impl>::CayleyFermion5D(GaugeField &_Umu,
 			FourDimGrid,
 			FourDimRedBlackGrid,_M5,p),
   mass(_mass)
-{ 
+{
+  INITIALISE_CUSTOM_TIMER(Meooe5DMooeeInvTime,1);
+  INITIALISE_CUSTOM_TIMER(Meooe5DMooeeInvTime,2);
+  
+  INITIALISE_CUSTOM_TIMER(DhopFaceTime,1);
+  INITIALISE_CUSTOM_TIMER(DhopFaceTime,2);
+  INITIALISE_CUSTOM_TIMER(DhopFaceTime,3);
+  
+  INITIALISE_CUSTOM_TIMER(DhopTotalTime,1);
+  INITIALISE_CUSTOM_TIMER(DhopTotalTime,2);
+  
+  INITIALISE_CUSTOM_TIMER(DhopComputeTime,1);
+  INITIALISE_CUSTOM_TIMER(DhopComputeTime,2);
 }
 
 ///////////////////////////////////////////////////////////////
@@ -718,55 +730,70 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     int Opt = WilsonKernelsStatic::Opt;
     
     // Call F on the surface sites
+    Meooe5DMooeeInvCalls++;
+    CUSTOM_TIMER_START(Meooe5DMooeeInvTime,1);
     (this->*F)(psi,this->tmp(),st->local_surface_list);
-    ////////////////////////////////////////////////////////////////////Meooe5DMooeeInvCalls--;
+    CUSTOM_TIMER_STOP (Meooe5DMooeeInvTime,1);
     
     // Start comms
     this->DhopCalls++;
-    this->DhopTotalTime-=usecond();
-    this->DhopFaceTime-=usecond();
+    CUSTOM_TIMER_START(DhopTotalTime,1);
+    CUSTOM_TIMER_START(DhopFaceTime,1);
     st->HaloExchangeOptGather(this->tmp(),compressor);
-    this->DhopFaceTime+=usecond();
+    CUSTOM_TIMER_STOP(DhopFaceTime,1);
     
     this->DhopCommTime -=usecond();
     std::vector<std::vector<CommsRequest_t> > requests;
     st->CommunicateBegin(requests);
     
-    this->DhopFaceTime-=usecond();
+    CUSTOM_TIMER_START(DhopFaceTime,2);
     st->CommsMergeSHM(compressor);
-    this->DhopFaceTime+=usecond();
-    this->DhopTotalTime+=usecond();
+    CUSTOM_TIMER_STOP(DhopFaceTime,2);
+    CUSTOM_TIMER_STOP(DhopTotalTime,1);
     
     // Call F on interior sites
+    CUSTOM_TIMER_START(Meooe5DMooeeInvTime,2);
     (this->*F)(psi,this->tmp(),st->local_interior_list);
+    CUSTOM_TIMER_STOP (Meooe5DMooeeInvTime,2);
     
     // Call Dhop interior
-    this->DhopTotalTime-=usecond();
-    this->DhopComputeTime-=usecond();
+    CUSTOM_TIMER_START(DhopTotalTime,2);
+    CUSTOM_TIMER_START(DhopComputeTime,1);
     if (dag == DaggerYes) {
       this->DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,1,0);
     } else {
       this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,1,0);
     }
-    this->DhopComputeTime+=usecond();
+    CUSTOM_TIMER_STOP(DhopComputeTime,1);
     
     // Complete comms
     st->CommunicateComplete(requests);
     this->DhopCommTime   +=usecond();
     
-    this->DhopFaceTime-=usecond();
+    CUSTOM_TIMER_START(DhopFaceTime,3);
     st->CommsMerge(compressor);
-    this->DhopFaceTime+=usecond();
+    CUSTOM_TIMER_STOP(DhopFaceTime,3);
     
     // Call Dhop exterior
-    this->DhopComputeTime2-=usecond();
+    CUSTOM_TIMER_START(DhopComputeTime,2);
     if (dag == DaggerYes) {
       this->DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
     } else {
       this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
     }
-    this->DhopComputeTime2+=usecond();
-    this->DhopTotalTime+=usecond();
+    CUSTOM_TIMER_STOP(DhopComputeTime,2);
+    CUSTOM_TIMER_STOP(DhopTotalTime,2);
+    
+    
+    CUSTOM_TIMER_UPDATE(Meooe5DMooeeInvTime,1);
+    CUSTOM_TIMER_UPDATE(Meooe5DMooeeInvTime,2);
+    CUSTOM_TIMER_UPDATE(DhopFaceTime,1);
+    CUSTOM_TIMER_UPDATE(DhopFaceTime,2);
+    CUSTOM_TIMER_UPDATE(DhopFaceTime,3);
+    CUSTOM_TIMER_UPDATE(DhopTotalTime,1);
+    CUSTOM_TIMER_UPDATE(DhopTotalTime,2);
+    CUSTOM_TIMER_UPDATE(DhopComputeTime,1);
+    CUSTOM_TIMER_UPDATE(DhopComputeTime,2);
     
     if ( psi.Checkerboard() == Odd ) chi.Checkerboard() = Even;
     else                             chi.Checkerboard() = Odd;
