@@ -295,30 +295,18 @@ public:
       }
     };
 
-  template<class Matrix,class Field>
-    class SchurDiagOneRHFused :  public SchurOperatorBase<Field> {
-  protected:
-    Matrix &_Mat;
-  public:
-    SchurDiagOneRHFused (Matrix &Mat): _Mat(Mat){};
-  
-    virtual  RealD Mpc      (const Field &in, Field &out) {
-      Field tmp(in.Grid());
-    
-      _Mat.MeooeMooeeInv(in,out);
-      _Mat.MeooeMooeeInv(out,tmp);
-    
-      return axpy_norm(out,-1.0,tmp,in);
-    }
-    virtual  RealD MpcDag   (const Field &in, Field &out){
-      Field tmp(in.Grid());
-    
-      //    _Mat.MooeeInvDagMeooeDag(int,out);
-      //    _Mat.MooeeInvDagMeooeDag(out,tmp);
-    
-      return axpy_norm(out,-1.0,tmp,in);
-    }
+#define INSTANTIATE_SCHUR(NAME,A,B) \
+  template<class Matrix,class Field> \
+    class NAME :  public SchurOperatorBase<Field> { \
+  protected: \
+    Matrix &_Mat; \
+  public: \
+    NAME (Matrix &Mat): _Mat(Mat){}; \
+    virtual  RealD Mpc   (const Field &in, Field &out) { return _Mat.A(in,out); } \
+    virtual  RealD MpcDag(const Field &in, Field &out) { return _Mat.B(in,out); } \
   };
+
+INSTANTIATE_SCHUR(SchurDiagOneRHFused,MpcRH,MpcDagRH);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Left  handed Moo^-1 ; (Moo - Moe Mee^-1 Meo) psi = eta  -->  ( 1 - Moo^-1 Moe Mee^-1 Meo ) psi = Moo^-1 eta

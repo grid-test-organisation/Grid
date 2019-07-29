@@ -364,12 +364,6 @@ void CayleyFermion5D<Impl>::MeooeDag    (const FermionField &psi, FermionField &
 }
 
 template<class Impl>
-void CayleyFermion5D<Impl>::MeooeMooeeInv (const FermionField &psi, FermionField &chi)
-{
-  this->ApplyFAndDhop(psi,chi,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
-}
-
-template<class Impl>
 void  CayleyFermion5D<Impl>::Mdir (const FermionField &psi, FermionField &chi,int dir,int disp){
   Meo5D(psi,this->tmp());
   // Apply 4d dslash fragment
@@ -677,6 +671,146 @@ void CayleyFermion5D<Impl>::MooeeInternalCompute(int dag, int inv,
     }}
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////        FUNCTION CALL OVERLAPPED WITH DHOP        ///////////////
+////////////////////////////////////////////////////////////////////////////////
+/*
+ "Function F" must be
+ void (CayleyFermion5D::*F)(const FermionField&, FermionField&, const Vector<int> &)
+ */
+template<class Impl>
+template<class Function>
+void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField &chi, int dag, Function F)
+{
+  assert(psi.Grid()->_isCheckerBoarded);
+  conformable(this->tmp().Grid(),this->FermionRedBlackGrid());
+  conformable(this->tmp().Grid(),chi.Grid());
+  
+  if ( WilsonKernelsStatic::Comms == WilsonKernelsStatic::CommsThenCompute ) {
+    
+    // Call F on all sites
+    (this->*F)(psi,this->tmp(),Vector<int>());
+    
+    // Call Dhop on all sites
+    if ( psi.Checkerboard() == Odd ) {
+      this->DhopEO(this->tmp(),chi,dag);
+    } else {
+      this->DhopOE(this->tmp(),chi,dag);
+    }
+    
+  } else {
+    
+    Compressor compressor(dag);
+    StencilImpl* st;
+    DoubledGaugeField *U;
+    
+    if ( psi.Checkerboard() == Odd ) {
+      st = &(this->StencilOdd);
+      U = &(this->UmuEven);
+    } else {
+      st = &(this->StencilEven);
+      U = &(this->UmuOdd);
+    }
+    
+    int LLs = psi.Grid()->_rdimensions[0];
+    int len = U->Grid()->oSites();
+    int Opt = WilsonKernelsStatic::Opt;
+    
+    // Call F on the surface sites
+    (this->*F)(psi,this->tmp(),st->local_surface_list);
+    ////////////////////////////////////////////////////////////////////Meooe5DMooeeInvCalls--;
+    
+    // Start comms
+    this->DhopCalls++;
+    this->DhopTotalTime-=usecond();
+    this->DhopFaceTime-=usecond();
+    st->HaloExchangeOptGather(this->tmp(),compressor);
+    this->DhopFaceTime+=usecond();
+    
+    this->DhopCommTime -=usecond();
+    std::vector<std::vector<CommsRequest_t> > requests;
+    st->CommunicateBegin(requests);
+    
+    this->DhopFaceTime-=usecond();
+    st->CommsMergeSHM(compressor);
+    this->DhopFaceTime+=usecond();
+    this->DhopTotalTime+=usecond();
+    
+    // Call F on interior sites
+    (this->*F)(psi,this->tmp(),st->local_interior_list);
+    
+    // Call Dhop interior
+    this->DhopTotalTime-=usecond();
+    this->DhopComputeTime-=usecond();
+    if (dag == DaggerYes) {
+      this->DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,1,0);
+    } else {
+      this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,1,0);
+    }
+    this->DhopComputeTime+=usecond();
+    
+    // Complete comms
+    st->CommunicateComplete(requests);
+    this->DhopCommTime   +=usecond();
+    
+    this->DhopFaceTime-=usecond();
+    st->CommsMerge(compressor);
+    this->DhopFaceTime+=usecond();
+    
+    // Call Dhop exterior
+    this->DhopComputeTime2-=usecond();
+    if (dag == DaggerYes) {
+      this->DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
+    } else {
+      this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
+    }
+    this->DhopComputeTime2+=usecond();
+    this->DhopTotalTime+=usecond();
+    
+    if ( psi.Checkerboard() == Odd ) chi.Checkerboard() = Even;
+    else                             chi.Checkerboard() = Odd;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////          FUSED PRECONDITIONED OPERATORS          ///////////////
+////////////////////////////////////////////////////////////////////////////////
+/*
+ 1 - Moe Mee^-1 Meo Moo^-1
+ */
+template<class Impl>
+RealD CayleyFermion5D<Impl>::MpcRH (const FermionField &in, FermionField &out)
+{
+  FermionField tmp(in.Grid());
+  
+  ApplyFAndDhop(in,out,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
+  this->ApplyFAndDhop(out,tmp,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
+  
+  return axpy_norm(out,-1.0,tmp,in);
+}
+
+/*
+ 1 - (Moo^-1)^dag Moe^dag (Mee^-1)^dag Meo^dag
+ */
+template<class Impl>
+RealD CayleyFermion5D<Impl>::MpcDagRH (const FermionField &in, FermionField &out)
+{
+  FermionField tmp(in.Grid());
+  
+  if ( in.Checkerboard() == Odd ) {
+    this->DhopEO(in,tmp,DaggerYes);
+  } else {
+    this->DhopOE(in,tmp,DaggerYes);
+  }
+  
+  this->ApplyFAndDhop(tmp,out,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D);
+  
+  MooeeInvDagMeooeDag5D(out,tmp);
+  
+  return axpy_norm(out,-1.0,tmp,in);
+}
 
 NAMESPACE_END(Grid);
 
