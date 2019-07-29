@@ -481,6 +481,97 @@ void WilsonFermion5D<Impl>::DhopInternalSerialComms(StencilImpl & st, LebesgueOr
   DhopComputeTime+=usecond();
 }
 
+/*
+ "Function F" must be
+ void (T::*F)(const FermionField&, FermionField&, const Vector<int> &)
+ for some class T derived from WilsonFermion5D
+ */
+template<class Impl>
+template<class Function>
+void WilsonFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField &chi, int dag, Function F)
+{
+  assert(psi.Grid()->_isCheckerBoarded);
+  conformable(tmp().Grid(),FermionRedBlackGrid());
+  conformable(tmp().Grid(),chi.Grid());
+  
+  if ( WilsonKernelsStatic::Comms == WilsonKernelsStatic::CommsThenCompute ) {
+    
+    (this->*F)(psi,tmp());
+    
+    if ( psi.Checkerboard() == Odd ) {
+      DhopEO(tmp(),chi,dag);
+    } else {
+      DhopOE(tmp(),chi,dag);
+    }
+    
+  } else {
+    
+    Compressor compressor(dag);
+    StencilImpl* st;
+    DoubledGaugeField *U;
+    
+    if ( psi.Checkerboard() == Odd ) {
+      st = &StencilOdd;
+      U = &UmuEven;
+    } else {
+      st = &StencilEven;
+      U = &UmuOdd;
+    }
+    
+    int LLs = psi.Grid()->_rdimensions[0];
+    int len = U->Grid()->oSites();
+    int Opt = WilsonKernelsStatic::Opt; // Why pass this. Kernels should know
+    
+    (this->*F)(psi,tmp(),st->local_surface_list);
+    ////////////////////////////////////////////////////////////////////Meooe5DMooeeInvCalls--;
+    
+    DhopCalls++;
+    
+    DhopTotalTime-=usecond();
+    DhopFaceTime-=usecond();
+    st->HaloExchangeOptGather(tmp(),compressor);
+    DhopFaceTime+=usecond();
+    
+    DhopCommTime -=usecond();
+    std::vector<std::vector<CommsRequest_t> > requests;
+    st->CommunicateBegin(requests);
+    
+    DhopFaceTime-=usecond();
+    st->CommsMergeSHM(compressor);// Could do this inside parallel region overlapped with comms
+    DhopFaceTime+=usecond();
+    DhopTotalTime+=usecond();
+    
+    (this->*F)(psi,tmp(),st->local_interior_list);
+    
+    DhopTotalTime-=usecond();
+    DhopComputeTime-=usecond();
+    if (dag == DaggerYes) {
+      Kernels::DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),tmp(),chi,1,0);
+    } else {
+      Kernels::DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),tmp(),chi,1,0);
+    }
+    DhopComputeTime+=usecond();
+    
+    st->CommunicateComplete(requests);
+    DhopCommTime   +=usecond();
+    
+    DhopFaceTime-=usecond();
+    st->CommsMerge(compressor);
+    DhopFaceTime+=usecond();
+    
+    DhopComputeTime2-=usecond();
+    if (dag == DaggerYes) {
+      Kernels::DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),tmp(),chi,0,1);
+    } else {
+      Kernels::DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),tmp(),chi,0,1);
+    }
+    DhopComputeTime2+=usecond();
+    DhopTotalTime+=usecond();
+    
+    if ( psi.Checkerboard() == Odd ) chi.Checkerboard() = Even;
+    else                             chi.Checkerboard() = Odd;
+  }
+}
 
 template<class Impl>
 void WilsonFermion5D<Impl>::DhopOE(const FermionField &in, FermionField &out,int dag)

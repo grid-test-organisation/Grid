@@ -162,7 +162,13 @@ public:
 			       const FermionField &in, 
 			       FermionField &out,
 			       int dag);
-    
+  
+  template<class Function>
+  void ApplyFAndDhop(const FermionField &psi,
+                     FermionField &chi,
+                     int dag,
+                     Function F);
+  
   // Constructors
   WilsonFermion5D(GaugeField &_Umu,
 		  GridCartesian         &FiveDimGrid,
