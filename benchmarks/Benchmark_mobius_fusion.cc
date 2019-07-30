@@ -192,7 +192,7 @@ int main (int argc, char ** argv)
   std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
   std::cout << GridLogMessage<< "-  Serial: comms then compute   -" <<std::endl;
   std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
-  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsAndCompute;
+  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsThenCompute;
   
   BENCH(SchurRH.Mpc,src_o,r_o);
   ref = r_o;
@@ -207,7 +207,7 @@ int main (int argc, char ** argv)
   std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
   std::cout << GridLogMessage<< "- Overlapped: comms and compute -" <<std::endl;
   std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
-  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsThenCompute;
+  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsAndCompute;
   
   BENCH(SchurRH.Mpc,src_o,r_o);
   ref = r_o;
