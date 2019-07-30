@@ -99,7 +99,7 @@ int main (int argc, char ** argv)
   //  MobiusFermionR Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5,1.5,0.5);
   
 #define PRINT(r,A) \
-  if(latt4[0]==4) {\
+  if(default_latt[0]==4) {\
     r_eo = Zero(); \
     setCheckerboard(r_eo,r); \
     std::cout << "--- RESULT " #A " ---" <<std::endl; \
@@ -174,12 +174,12 @@ int main (int argc, char ** argv)
   
   BENCH_FUS(Dw.Meooe5D,Dw.MooeeInv,src_o,r_o,tmp_o);
   ref = r_o;
-  BENCH(Dw.Meooe5DMooeeInv,src_o,r_o);
+  BENCH(Dw.Meooe5DMooeeInv,src_o,r_o,tmp_o);
   COMPARE(r_o,ref);
 
   BENCH_FUS(Dw.MooeeInvDag,Dw.MeooeDag5D,src_o,r_o,tmp_o);
   ref = r_o;
-  BENCH(Dw.MooeeInvDagMeooeDag5D,src_o,r_o);
+  BENCH(Dw.MooeeInvDagMeooeDag5D,src_o,r_o,tmp_o);
   COMPARE(r_o,ref);
 
   std::cout << GridLogMessage<< "*********************************************************" <<std::endl;

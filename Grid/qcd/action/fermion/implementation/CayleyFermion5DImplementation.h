@@ -688,7 +688,7 @@ void CayleyFermion5D<Impl>::MooeeInternalCompute(int dag, int inv,
 ///////////////        FUNCTION CALL OVERLAPPED WITH DHOP        ///////////////
 ////////////////////////////////////////////////////////////////////////////////
 /*
- "Function F" must be
+ "Function F"
  void (CayleyFermion5D::*F)(const FermionField&, FermionField&, const Vector<int> &)
  */
 template<class Impl>
@@ -702,7 +702,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
   if ( WilsonKernelsStatic::Comms == WilsonKernelsStatic::CommsThenCompute ) {
     
     // Call F on all sites
-    (this->*F)(psi,this->tmp(),Vector<int>());
+    (this->*F)(psi,this->tmp(),chi,Vector<int>());
     
     // Call Dhop on all sites
     if ( psi.Checkerboard() == Odd ) {
@@ -732,7 +732,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     // Call F on the surface sites
     Meooe5DMooeeInvCalls++;
     CUSTOM_TIMER_START(Meooe5DMooeeInvTime,1);
-    (this->*F)(psi,this->tmp(),st->local_surface_list);
+    (this->*F)(psi,this->tmp(),chi,st->local_surface_list);
     CUSTOM_TIMER_STOP (Meooe5DMooeeInvTime,1);
     
     // Start comms
@@ -753,7 +753,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     
     // Call F on interior sites
     CUSTOM_TIMER_START(Meooe5DMooeeInvTime,2);
-    (this->*F)(psi,this->tmp(),st->local_interior_list);
+    (this->*F)(psi,this->tmp(),chi,st->local_interior_list);
     CUSTOM_TIMER_STOP (Meooe5DMooeeInvTime,2);
     
     // Call Dhop interior
@@ -813,7 +813,7 @@ RealD CayleyFermion5D<Impl>::MpcRH (const FermionField &in, FermionField &out)
   FermionField tmp(in.Grid());
   
   ApplyFAndDhop(in,out,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
-  this->ApplyFAndDhop(out,tmp,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
+  ApplyFAndDhop(out,tmp,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
   
   return axpy_norm(out,-1.0,tmp,in);
 }
@@ -824,7 +824,7 @@ RealD CayleyFermion5D<Impl>::MpcRH (const FermionField &in, FermionField &out)
 template<class Impl>
 RealD CayleyFermion5D<Impl>::MpcDagRH (const FermionField &in, FermionField &out)
 {
-  FermionField tmp(in.Grid());
+  FermionField tmp(in.Grid()), buf(in.Grid());
   
   if ( in.Checkerboard() == Odd ) {
     this->DhopEO(in,tmp,DaggerYes);
@@ -832,9 +832,9 @@ RealD CayleyFermion5D<Impl>::MpcDagRH (const FermionField &in, FermionField &out
     this->DhopOE(in,tmp,DaggerYes);
   }
   
-  this->ApplyFAndDhop(tmp,out,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D);
+  ApplyFAndDhop(tmp,out,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D);
   
-  MooeeInvDagMeooeDag5D(out,tmp);
+  MooeeInvDagMeooeDag5D(out,tmp,buf);
   
   return axpy_norm(out,-1.0,tmp,in);
 }
