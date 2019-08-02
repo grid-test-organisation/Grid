@@ -207,7 +207,7 @@ public:
   CREATE_CUSTOM_TIMER(DhopTotalTime,2);
 
   CREATE_CUSTOM_TIMER(DhopComputeTime,1);
-  CREATE_CUSTOM_TIMER(DhopComputeTime,2);
+  CREATE_CUSTOM_TIMER(DhopComputeTime2,1);
 
 #else
   

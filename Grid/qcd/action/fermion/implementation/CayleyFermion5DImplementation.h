@@ -61,7 +61,7 @@ CayleyFermion5D<Impl>::CayleyFermion5D(GaugeField &_Umu,
   INITIALISE_CUSTOM_TIMER(DhopTotalTime,2);
   
   INITIALISE_CUSTOM_TIMER(DhopComputeTime,1);
-  INITIALISE_CUSTOM_TIMER(DhopComputeTime,2);
+  INITIALISE_CUSTOM_TIMER(DhopComputeTime2,1);
 }
 
 ///////////////////////////////////////////////////////////////
@@ -775,13 +775,13 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     CUSTOM_TIMER_STOP(DhopFaceTime,3);
     
     // Call Dhop exterior
-    CUSTOM_TIMER_START(DhopComputeTime,2);
+    CUSTOM_TIMER_START(DhopComputeTime2,1);
     if (dag == DaggerYes) {
       this->DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
     } else {
       this->DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),chi,0,1);
     }
-    CUSTOM_TIMER_STOP(DhopComputeTime,2);
+    CUSTOM_TIMER_STOP(DhopComputeTime2,1);
     CUSTOM_TIMER_STOP(DhopTotalTime,2);
     
     
@@ -793,7 +793,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     CUSTOM_TIMER_UPDATE(DhopTotalTime,1);
     CUSTOM_TIMER_UPDATE(DhopTotalTime,2);
     CUSTOM_TIMER_UPDATE(DhopComputeTime,1);
-    CUSTOM_TIMER_UPDATE(DhopComputeTime,2);
+    CUSTOM_TIMER_UPDATE(DhopComputeTime2,1);
     
     if ( psi.Checkerboard() == Odd ) chi.Checkerboard() = Even;
     else                             chi.Checkerboard() = Odd;
