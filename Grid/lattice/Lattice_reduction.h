@@ -23,7 +23,7 @@ Author: paboyle <paboyle@ph.ed.ac.uk>
 
 #include <Grid/Grid_Eigen_Dense.h>
 #ifdef GRID_NVCC
-#include <Grid/lattice/Lattice_reduction_gpu.h>
+#include <thrust/inner_product.h>
 #endif
 
 NAMESPACE_BEGIN(Grid);
@@ -36,6 +36,14 @@ template<class vobj> inline RealD norm2(const Lattice<vobj> &arg){
   return real(nrm); 
 }
 
+#ifdef GRID_NVCC
+template<class T, class R>
+struct innerProductFunctor : public thrust::binary_function<T,T,R>
+{
+  accelerator R operator()(T x, T y) { return innerProduct(x,y); }
+};
+#endif
+
 // Double inner product
 template<class vobj>
 inline ComplexD innerProduct(const Lattice<vobj> &left,const Lattice<vobj> &right)
@@ -45,29 +53,22 @@ inline ComplexD innerProduct(const Lattice<vobj> &left,const Lattice<vobj> &righ
   scalar_type  nrm;
   
   GridBase *grid = left.Grid();
+  
+  Vector<vector_type> sumarray(grid->SumArraySize());
 
   auto left_v = left.View();
   auto right_v=right.View();
 
-#ifdef GRID_NVCC
-  
-  const uint64_t nsimd = grid->Nsimd();
-  const uint64_t sites = grid->oSites();
-  
+#if 0
   typedef decltype(innerProduct(left_v[0],right_v[0])) inner_t;
-  Lattice<inner_t> inner_tmp(grid);
-  auto inner_tmp_v = inner_tmp.View();
-  
-  accelerator_for( ss, sites, nsimd, {
-    coalescedWrite(inner_tmp_v[ss],innerProduct(left_v(ss),right_v(ss)));
-  });
-  
-  nrm = TensorRemove(reduce(inner_tmp));
-  
+  thrust::plus<inner_t> binary_sum;
+  innerProductFunctor<vobj,inner_t> binary_inner_p;
+  Integer sN = left_v.end();
+  inner_t zero = Zero();
+  // is there a way of using the efficient thrust reduction while maintaining memory coalescing?
+  inner_t vnrm = thrust::inner_product(thrust::device, &left_v[0], &left_v[sN], &right_v[0], zero, binary_sum, binary_inner_p);
+  nrm = Reduce(TensorRemove(vnrm));// sum across simd
 #else
-  
-  Vector<vector_type> sumarray(grid->SumArraySize());
-  
   thread_for( thr,grid->SumArraySize(),{
     int mywork, myoff;
     GridThread::GetWork(left.Grid()->oSites(),thr,mywork,myoff);
@@ -104,43 +105,22 @@ axpy_norm_fast(Lattice<vobj> &z,sobj a,const Lattice<vobj> &x,const Lattice<vobj
 template<class sobj,class vobj> strong_inline RealD 
 axpby_norm_fast(Lattice<vobj> &z,sobj a,sobj b,const Lattice<vobj> &x,const Lattice<vobj> &y) 
 {
+  const int pad = 8;
   z.Checkerboard() = x.Checkerboard();
   conformable(z,x);
   conformable(x,y);
+
+  typedef typename vobj::scalar_type scalar_type;
+  typedef typename vobj::vector_typeD vector_type;
+  RealD  nrm;
   
   GridBase *grid = x.Grid();
+  
+  Vector<RealD> sumarray(grid->SumArraySize()*pad);
   
   auto x_v=x.View();
   auto y_v=y.View();
   auto z_v=z.View();
-  RealD  nrm;
-  
-#ifdef GRID_NVCC
-  
-  const uint64_t nsimd = grid->Nsimd();
-  const uint64_t sites = grid->oSites();
-  
-  typedef decltype(innerProductD(x_v[0],x_v[0])) inner_t;
-  Lattice<inner_t> inner_tmp(grid);
-  auto inner_tmp_v = inner_tmp.View();
-  
-  accelerator_for( ss, sites, nsimd, {
-    auto res = a*x_v(ss)+b*y_v(ss);
-    coalescedWrite(z_v[ss],res);
-    coalescedWrite(inner_tmp_v[ss],innerProductD(res,res));
-  });
-  
-  nrm = real(TensorRemove(reduce(inner_tmp)));
-  
-#else
-  
-  const int pad = 8;
-  
-  typedef typename vobj::scalar_type scalar_type;
-  typedef typename vobj::vector_typeD vector_type;
-  
-  Vector<RealD> sumarray(grid->SumArraySize()*pad);
-  
   thread_for(thr,grid->SumArraySize(),
   {
     int nwork, mywork, myoff;
@@ -162,7 +142,6 @@ axpby_norm_fast(Lattice<vobj> &z,sobj a,sobj b,const Lattice<vobj> &x,const Latt
     nrm = nrm+sumarray[i*pad];
   } 
   z.Grid()->GlobalSum(nrm);
-#endif
   return nrm; 
 }
 
@@ -195,9 +174,6 @@ inline auto sum(const LatticeTrinaryExpression<Op,T1,T2,T3> & expr)
 template<class vobj>
 inline typename vobj::scalar_object sum(const Lattice<vobj> &arg)
 {
-#ifdef GRID_NVCC
-  return reduce(arg);
-#else
   GridBase *grid=arg.Grid();
   int Nsimd = grid->Nsimd();
   
@@ -234,7 +210,6 @@ inline typename vobj::scalar_object sum(const Lattice<vobj> &arg)
   arg.Grid()->GlobalSum(ssum);
   
   return ssum;
-#endif
 }
 
 

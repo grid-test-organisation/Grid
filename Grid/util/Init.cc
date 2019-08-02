@@ -281,9 +281,6 @@ void GridBanner(void)
     printed=1;
   }
 }
-#ifdef GRID_NVCC
-cudaDeviceProp gpu_props;
-#endif
 void GridGpuInit(void)
 {
 #ifdef GRID_NVCC
@@ -323,15 +320,16 @@ void GridGpuInit(void)
   if ( world_rank == 0) {
     for (int i = 0; i < nDevices; i++) {
 
-#define GPU_PROP_FMT(canMapHostMemory,FMT)     printf("GpuInit:   " #canMapHostMemory ": " FMT" \n",gpu_props.canMapHostMemory);
+#define GPU_PROP_FMT(canMapHostMemory,FMT)     printf("GpuInit:   " #canMapHostMemory ": " FMT" \n",prop.canMapHostMemory);
 #define GPU_PROP(canMapHostMemory)             GPU_PROP_FMT(canMapHostMemory,"%d");
 
-      cudaGetDeviceProperties(&gpu_props, i);
+      cudaDeviceProp prop; 
+      cudaGetDeviceProperties(&prop, i);
       printf("GpuInit: ========================\n");
       printf("GpuInit: Device Number    : %d\n", i);
       printf("GpuInit: ========================\n");
-      printf("GpuInit: Device identifier: %s\n", gpu_props.name);
-      printf("GpuInit:   Peak Memory Bandwidth (GB/s): %f\n",(float)2.0*gpu_props.memoryClockRate*(gpu_props.memoryBusWidth/8)/1.0e6);
+      printf("GpuInit: Device identifier: %s\n", prop.name);
+      printf("GpuInit:   Peak Memory Bandwidth (GB/s): %f\n",(float)2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
       GPU_PROP(managedMemory);
 #if 0
       GPU_PROP(unifiedAddressing);
@@ -343,7 +341,6 @@ void GridGpuInit(void)
     }
     printf("GpuInit: ================================================\n");
   }
-  cudaGetDeviceProperties(&gpu_props, device);
 #endif
 }
 
