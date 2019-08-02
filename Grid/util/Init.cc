@@ -281,14 +281,17 @@ void GridBanner(void)
     printed=1;
   }
 }
+#ifdef GRID_NVCC
+cudaDeviceProp *gpu_props;
+#endif
 void GridGpuInit(void)
 {
 #ifdef GRID_NVCC
   int nDevices = 1;
   cudaGetDeviceCount(&nDevices);
+  gpu_props = new cudaDeviceProp[nDevices];
 
   char * localRankStr = NULL;
-
   int rank = 0, device = 0, world_rank=0; 
 #define ENV_LOCAL_RANK_OMPI    "OMPI_COMM_WORLD_LOCAL_RANK"
 #define ENV_LOCAL_RANK_MVAPICH "MV2_COMM_WORLD_LOCAL_RANK"
@@ -317,30 +320,32 @@ void GridGpuInit(void)
     printf("GpuInit: Cuda reports %d GPUs on MPI rank 0\n",nDevices);
   }
 
-  if ( world_rank == 0) {
-    for (int i = 0; i < nDevices; i++) {
+  for (int i = 0; i < nDevices; i++) {
 
 #define GPU_PROP_FMT(canMapHostMemory,FMT)     printf("GpuInit:   " #canMapHostMemory ": " FMT" \n",prop.canMapHostMemory);
 #define GPU_PROP(canMapHostMemory)             GPU_PROP_FMT(canMapHostMemory,"%d");
-
+    
+    //      cudaGetDeviceProperties(&prop, i);
+    cudaGetDeviceProperties(&gpu_props[i], i);
+    if ( world_rank == 0) {
       cudaDeviceProp prop; 
-      cudaGetDeviceProperties(&prop, i);
+      prop = gpu_props[i];
       printf("GpuInit: ========================\n");
       printf("GpuInit: Device Number    : %d\n", i);
       printf("GpuInit: ========================\n");
       printf("GpuInit: Device identifier: %s\n", prop.name);
-      printf("GpuInit:   Peak Memory Bandwidth (GB/s): %f\n",(float)2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+      //      printf("GpuInit:   Peak Memory Bandwidth (GB/s): %f\n",(float)2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
       GPU_PROP(managedMemory);
+      GPU_PROP(isMultiGpuBoard);
+      GPU_PROP(warpSize);
 #if 0
       GPU_PROP(unifiedAddressing);
-      GPU_PROP(isMultiGpuBoard);
       GPU_PROP(l2CacheSize);
       GPU_PROP(singleToDoublePrecisionPerfRatio);
-      GPU_PROP(warpSize);
 #endif
     }
-    printf("GpuInit: ================================================\n");
   }
+  printf("GpuInit: ================================================\n");
 #endif
 }
 
@@ -617,6 +622,11 @@ void Grid_sa_signal_handler(int sig,siginfo_t *si,void * ptr)
   return;
 };
 
+void Grid_exit_handler(void)
+{
+  BACKTRACEFP(stdout);
+  fflush(stdout);
+}
 void Grid_debug_handler_init(void)
 {
   struct sigaction sa;
@@ -632,6 +642,8 @@ void Grid_debug_handler_init(void)
   sigaction(SIGFPE,&sa,NULL);
   sigaction(SIGKILL,&sa,NULL);
   sigaction(SIGILL,&sa,NULL);
+
+  atexit(Grid_exit_handler);
 }
 
 NAMESPACE_END(Grid);
