@@ -219,5 +219,79 @@ int main (int argc, char ** argv)
   BENCH_NOREP(FusedSchurRH.MpcDag,src_o,r_o);
   COMPARE(r_o,ref);
   
+  std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
+  std::cout << GridLogMessage<< "* Benchmarking fused kernels for LH preconditioning"<<std::endl;
+  std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
+  
+  SchurDiagOneLH<DomainWallFermionR,LatticeFermion>           SchurLH(Dw);
+  SchurDiagOneLHFused<DomainWallFermionR,LatticeFermion> FusedSchurLH(Dw);
+  
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  std::cout << GridLogMessage<< "-  Serial: comms then compute   -" <<std::endl;
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsThenCompute;
+  
+  BENCH(SchurLH.Mpc,src_o,r_o);
+  ref = r_o;
+  BENCH(FusedSchurLH.Mpc,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  BENCH_NOREP(SchurLH.MpcDag,src_o,r_o);
+  ref = r_o;
+  BENCH_NOREP(FusedSchurLH.MpcDag,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  std::cout << GridLogMessage<< "- Overlapped: comms and compute -" <<std::endl;
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsAndCompute;
+  
+  BENCH(SchurLH.Mpc,src_o,r_o);
+  ref = r_o;
+  BENCH(FusedSchurLH.Mpc,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  BENCH_NOREP(SchurLH.MpcDag,src_o,r_o);
+  ref = r_o;
+  BENCH_NOREP(FusedSchurLH.MpcDag,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
+  std::cout << GridLogMessage<< "* Benchmarking fused kernels for Mooee preconditioning"<<std::endl;
+  std::cout << GridLogMessage<< "*********************************************************" <<std::endl;
+  
+  SchurDiagMooeeOperator<DomainWallFermionR,LatticeFermion> SchurMooee(Dw);
+  SchurDiagMooeeFused<DomainWallFermionR,LatticeFermion>    FusedSchurMooee(Dw);
+  
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  std::cout << GridLogMessage<< "-  Serial: comms then compute   -" <<std::endl;
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsThenCompute;
+  
+  BENCH(SchurMooee.Mpc,src_o,r_o);
+  ref = r_o;
+  BENCH(FusedSchurMooee.Mpc,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  BENCH_NOREP(SchurMooee.MpcDag,src_o,r_o);
+  ref = r_o;
+  BENCH_NOREP(FusedSchurMooee.MpcDag,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  std::cout << GridLogMessage<< "- Overlapped: comms and compute -" <<std::endl;
+  std::cout << GridLogMessage<< "---------------------------------" <<std::endl;
+  WilsonKernelsStatic::Comms = WilsonKernelsStatic::CommsAndCompute;
+  
+  BENCH(SchurMooee.Mpc,src_o,r_o);
+  ref = r_o;
+  BENCH(FusedSchurMooee.Mpc,src_o,r_o);
+  COMPARE(r_o,ref);
+  
+  BENCH_NOREP(SchurMooee.MpcDag,src_o,r_o);
+  ref = r_o;
+  BENCH_NOREP(FusedSchurMooee.MpcDag,src_o,r_o);
+  COMPARE(r_o,ref);
+  
   Grid_finalize();
 }
