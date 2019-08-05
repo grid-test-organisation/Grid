@@ -209,6 +209,8 @@ public:
   CREATE_CUSTOM_TIMER(DhopComputeTime,1);
   CREATE_CUSTOM_TIMER(DhopComputeTime2,1);
 
+  CREATE_CUSTOM_TIMER(DhopCommTime,1);
+
 #else
   
 #define CREATE_CUSTOM_TIMER(NAME, INDEX)

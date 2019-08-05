@@ -62,6 +62,8 @@ CayleyFermion5D<Impl>::CayleyFermion5D(GaugeField &_Umu,
   
   INITIALISE_CUSTOM_TIMER(DhopComputeTime,1);
   INITIALISE_CUSTOM_TIMER(DhopComputeTime2,1);
+  
+  INITIALISE_CUSTOM_TIMER(DhopCommTime,1);
 }
 
 ///////////////////////////////////////////////////////////////
@@ -742,7 +744,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     st->HaloExchangeOptGather(this->tmp(),compressor);
     CUSTOM_TIMER_STOP(DhopFaceTime,1);
     
-    this->DhopCommTime -=usecond();
+    CUSTOM_TIMER_START(DhopCommTime,1);
     std::vector<std::vector<CommsRequest_t> > requests;
     st->CommunicateBegin(requests);
     
@@ -768,7 +770,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     
     // Complete comms
     st->CommunicateComplete(requests);
-    this->DhopCommTime   +=usecond();
+    CUSTOM_TIMER_STOP(DhopCommTime,1);
     
     CUSTOM_TIMER_START(DhopFaceTime,3);
     st->CommsMerge(compressor);
