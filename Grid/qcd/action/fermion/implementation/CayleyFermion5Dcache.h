@@ -336,6 +336,34 @@ CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi
 
 template<class Impl>
 void
+CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi_i)
+{
+  chi_i.Checkerboard()=psi_i.Checkerboard();
+  GridBase *grid=psi_i.Grid();
+  
+  auto psi = psi_i.View();
+  auto chi = chi_i.View();
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
+  int Ls=this->Ls;
+  
+  MooeeInvCalls++;
+  MooeeInvTime-=usecond();
+  uint64_t nloop = grid->oSites()/Ls;
+  accelerator_for(sss,nloop,Simd::Nsimd(),{
+    uint64_t ss=sss*Ls;
+    MooeeInvDagInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
+  });
+  
+  MooeeInvTime+=usecond();
+  
+}
+
+template<class Impl>
+void
 CayleyFermion5D<Impl>::MooeeInvList (const FermionField &psi_i, FermionField &chi_i, FermionField &buf, const Vector<int> &siteList)
 {
   chi_i.Checkerboard()=psi_i.Checkerboard();
@@ -403,34 +431,6 @@ CayleyFermion5D<Impl>::MooeeInvDagList (const FermionField &psi_i, FermionField 
       MooeeInvDagInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
     });
   }
-  
-}
-
-template<class Impl>
-void
-CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi_i)
-{
-  chi_i.Checkerboard()=psi_i.Checkerboard();
-  GridBase *grid=psi_i.Grid();
-  
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
-  auto lee_v  = &lee[0];
-  auto leem_v = &leem[0];
-  auto uee_v  = &uee[0];
-  auto ueem_v = &ueem[0];
-  auto dee_v  = &dee[0];
-  int Ls=this->Ls;
-  
-  MooeeInvCalls++;
-  MooeeInvTime-=usecond();
-  uint64_t nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss=sss*Ls;
-    MooeeInvDagInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
-  });
-  
-  MooeeInvTime+=usecond();
   
 }
 
