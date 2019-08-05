@@ -238,6 +238,76 @@ CayleyFermion5D<Impl>::M5Ddag(const FermionField &psi_i,
 
 template<class Impl>
 void
+CayleyFermion5D<Impl>::Meooe5DList(const FermionField &psi_i, FermionField &chi_i, FermionField &buf, const Vector<int> &siteList)
+{
+  
+  chi_i.Checkerboard()=psi_i.Checkerboard();
+  GridBase *grid=psi_i.Grid();
+  auto psi = psi_i.View();
+  auto chi = chi_i.View();
+  auto diag_v  = &bs_diag[0];
+  auto upper_v = &cs_upper[0];
+  auto lower_v = &cs_lower[0];
+  int Ls =this->Ls;
+  
+  // 10 = 3 complex mult + 2 complex add
+  // Flops = 10.0*(Nc*Ns) *Ls*vol (/2 for red black counting)
+  if ( siteList.empty() ) {
+    M5Dcalls++;
+    M5Dtime-=usecond();
+    uint64_t nloop = grid->oSites()/Ls;
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss= sss*Ls;
+      M5DInner(ss,Ls,psi,psi,chi,lower_v,diag_v,upper_v);
+    });
+    M5Dtime+=usecond();
+  } else {
+    uint64_t nloop = siteList.size();
+    auto siteList_v = &siteList[0];
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss=siteList_v[sss]*Ls;
+      M5DInner(ss,Ls,psi,psi,chi,lower_v,diag_v,upper_v);
+    });
+  }
+}
+
+template<class Impl>
+void
+CayleyFermion5D<Impl>::MeooeDag5DList(const FermionField &psi_i, FermionField &chi_i, FermionField &buf, const Vector<int> &siteList)
+{
+
+  chi_i.Checkerboard()=psi_i.Checkerboard();
+  GridBase *grid=psi_i.Grid();
+  auto psi = psi_i.View();
+  auto chi = chi_i.View();
+  auto diag_v  = &bs_diagDag[0];
+  auto upper_v = &cs_upperDag[0];
+  auto lower_v = &cs_lowerDag[0];
+  int Ls =this->Ls;
+  
+  // 10 = 3 complex mult + 2 complex add
+  // Flops = 10.0*(Nc*Ns) *Ls*vol (/2 for red black counting)
+  if ( siteList.empty() ) {
+    M5Dcalls++;
+    M5Dtime-=usecond();
+    uint64_t nloop = grid->oSites()/Ls;
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss= sss*Ls;
+      M5DdagInner(ss,Ls,psi,psi,chi,lower_v,diag_v,upper_v);
+    });
+    M5Dtime+=usecond();
+  } else {
+    uint64_t nloop = siteList.size();
+    auto siteList_v = &siteList[0];
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss=siteList_v[sss]*Ls;
+      M5DdagInner(ss,Ls,psi,psi,chi,lower_v,diag_v,upper_v);
+    });
+  }
+}
+
+template<class Impl>
+void
 CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi_i)
 {
   chi_i.Checkerboard()=psi_i.Checkerboard();
@@ -264,6 +334,77 @@ CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi
 
 }
 
+template<class Impl>
+void
+CayleyFermion5D<Impl>::MooeeInvList (const FermionField &psi_i, FermionField &chi_i, FermionField &buf, const Vector<int> &siteList)
+{
+  chi_i.Checkerboard()=psi_i.Checkerboard();
+  GridBase *grid=psi_i.Grid();
+  
+  auto psi = psi_i.View();
+  auto chi = chi_i.View();
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
+  int Ls=this->Ls;
+  
+  if ( siteList.empty() ) {
+    MooeeInvCalls++;
+    MooeeInvTime-=usecond();
+    uint64_t nloop = grid->oSites()/Ls;
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss=sss*Ls;
+      MooeeInvInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
+    });
+    MooeeInvTime+=usecond();
+  } else {
+    uint64_t nloop = siteList.size();
+    auto siteList_v = &siteList[0];
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss=siteList_v[sss]*Ls;
+      MooeeInvInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
+    });
+  }
+  
+}
+
+template<class Impl>
+void
+CayleyFermion5D<Impl>::MooeeInvDagList (const FermionField &psi_i, FermionField &chi_i, FermionField &buf, const Vector<int> &siteList)
+{
+  chi_i.Checkerboard()=psi_i.Checkerboard();
+  GridBase *grid=psi_i.Grid();
+  
+  auto psi = psi_i.View();
+  auto chi = chi_i.View();
+  auto lee_v  = &lee[0];
+  auto leem_v = &leem[0];
+  auto uee_v  = &uee[0];
+  auto ueem_v = &ueem[0];
+  auto dee_v  = &dee[0];
+  int Ls=this->Ls;
+  
+  if ( siteList.empty() ) {
+    MooeeInvCalls++;
+    MooeeInvTime-=usecond();
+    uint64_t nloop = grid->oSites()/Ls;
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss=sss*Ls;
+      MooeeInvDagInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
+    });
+    MooeeInvTime+=usecond();
+  } else {
+    uint64_t nloop = siteList.size();
+    auto siteList_v = &siteList[0];
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+      uint64_t ss=siteList_v[sss]*Ls;
+      MooeeInvDagInner(ss,Ls,psi,chi,dee_v,uee_v,ueem_v,lee_v,leem_v);
+    });
+  }
+  
+}
 
 template<class Impl>
 void

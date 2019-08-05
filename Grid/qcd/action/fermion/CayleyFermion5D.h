@@ -56,12 +56,17 @@ public:
   virtual void   M5D   (const FermionField &psi, FermionField &chi);
   virtual void   M5Ddag(const FermionField &psi, FermionField &chi);
 
-  // fused operations
+  // Apply F overlapped with Dhop
   template<class Function>
   void ApplyFAndDhop(const FermionField &psi, FermionField &chi, int dag, Function F);
-
+  // Fused functions
   virtual void  Meooe5DMooeeInv        (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
   virtual void  MooeeInvDagMeooeDag5D  (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
+  virtual void   MooeeInvList    (const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList = Vector<int>());
+  virtual void   MooeeInvDagList (const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList = Vector<int>());
+  void   Meooe5DList       (const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList = Vector<int>());
+  void   MeooeDag5DList    (const FermionField &in, FermionField &out, FermionField &buf, const Vector<int> &siteList = Vector<int>());
+  // Preconditioned operators
   virtual RealD MpcRH      (const FermionField& in, FermionField& out);
   virtual RealD MpcDagRH   (const FermionField& in, FermionField& out);
   virtual RealD MpcLH      (const FermionField& in, FermionField& out);
