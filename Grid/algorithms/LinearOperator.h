@@ -307,6 +307,7 @@ public:
   };
 
 INSTANTIATE_SCHUR(SchurDiagOneRHFused,MpcRH,MpcDagRH);
+INSTANTIATE_SCHUR(SchurDiagOneRHFused,MpcLH,MpcDagLH);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Left  handed Moo^-1 ; (Moo - Moe Mee^-1 Meo) psi = eta  -->  ( 1 - Moo^-1 Moe Mee^-1 Meo ) psi = Moo^-1 eta

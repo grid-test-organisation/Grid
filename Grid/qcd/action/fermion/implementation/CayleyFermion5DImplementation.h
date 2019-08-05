@@ -841,6 +841,36 @@ RealD CayleyFermion5D<Impl>::MpcDagRH (const FermionField &in, FermionField &out
   return axpy_norm(out,-1.0,tmp,in);
 }
 
+/*
+ 1 - Moo^-1 Moe Mee^-1 Meo
+ */
+template<class Impl>
+RealD CayleyFermion5D<Impl>::MpcLH (const FermionField &in, FermionField &out)
+{
+  FermionField tmp(in.Grid());
+  
+  ApplyFAndDhop(in,tmp,DaggerNo,&CayleyFermion5D<Impl>::Meooe5D);
+  ApplyFAndDhop(tmp,out,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
+  MooeeInv(out,tmp);
+  
+  return axpy_norm(out,-1.0,tmp,in);
+}
+
+/*
+ 1 - Moe^dag (Mee^-1)^dag Meo^dag (Moo^-1)^dag
+ */
+template<class Impl>
+RealD CayleyFermion5D<Impl>::MpcDagLH (const FermionField &in, FermionField &out)
+{
+  FermionField tmp(in.Grid());
+  
+  ApplyFAndDhop(in,tmp,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDag);
+  ApplyFAndDhop(tmp,out,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D);
+  MeooeDag5D(out,tmp);
+  
+  return axpy_norm(out,-1.0,tmp,in);
+}
+
 NAMESPACE_END(Grid);
 
 
