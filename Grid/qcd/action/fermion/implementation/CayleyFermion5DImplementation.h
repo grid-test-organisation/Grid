@@ -796,6 +796,7 @@ void CayleyFermion5D<Impl>::ApplyFAndDhop(const FermionField &psi, FermionField 
     CUSTOM_TIMER_UPDATE(DhopTotalTime,2);
     CUSTOM_TIMER_UPDATE(DhopComputeTime,1);
     CUSTOM_TIMER_UPDATE(DhopComputeTime2,1);
+    CUSTOM_TIMER_UPDATE(DhopCommTime,1);
     
     if ( psi.Checkerboard() == Odd ) chi.Checkerboard() = Even;
     else                             chi.Checkerboard() = Odd;
