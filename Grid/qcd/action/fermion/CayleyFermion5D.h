@@ -62,10 +62,12 @@ public:
 
   virtual void  Meooe5DMooeeInv        (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
   virtual void  MooeeInvDagMeooeDag5D  (const FermionField& in, FermionField& out, FermionField& buf, const Vector<int> &siteList = Vector<int>());
-  virtual RealD MpcRH   (const FermionField& in, FermionField& out);
-  virtual RealD MpcDagRH(const FermionField& in, FermionField& out);
-  virtual RealD MpcLH   (const FermionField& in, FermionField& out);
-  virtual RealD MpcDagLH(const FermionField& in, FermionField& out);
+  virtual RealD MpcRH      (const FermionField& in, FermionField& out);
+  virtual RealD MpcDagRH   (const FermionField& in, FermionField& out);
+  virtual RealD MpcLH      (const FermionField& in, FermionField& out);
+  virtual RealD MpcDagLH   (const FermionField& in, FermionField& out);
+  virtual RealD MpcMooee   (const FermionField& in, FermionField& out);
+  virtual RealD MpcDagMooee(const FermionField& in, FermionField& out);
 
   ///////////////////////////////////////////////////////////////
   // Physical surface field utilities

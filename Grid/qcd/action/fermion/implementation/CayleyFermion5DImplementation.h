@@ -836,7 +836,6 @@ RealD CayleyFermion5D<Impl>::MpcDagRH (const FermionField &in, FermionField &out
   }
   
   ApplyFAndDhop(tmp,out,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D);
-  
   MooeeInvDagMeooeDag5D(out,tmp,buf);
   
   return axpy_norm(out,-1.0,tmp,in);
@@ -870,6 +869,43 @@ RealD CayleyFermion5D<Impl>::MpcDagLH (const FermionField &in, FermionField &out
   MeooeDag5D(out,tmp);
   
   return axpy_norm(out,-1.0,tmp,in);
+}
+
+/*
+ Moo - Moe Mee^-1 Meo
+ */
+template<class Impl>
+RealD CayleyFermion5D<Impl>::MpcMooee (const FermionField &in, FermionField &out)
+{
+  FermionField tmp(in.Grid());
+  
+  ApplyFAndDhop(in,out,DaggerNo,&CayleyFermion5D<Impl>::Meooe5D);
+  ApplyFAndDhop(out,tmp,DaggerNo,&CayleyFermion5D<Impl>::Meooe5DMooeeInv);
+  Mooee(in,out);
+  
+  return axpy_norm(out,-1.0,tmp,out);
+}
+
+/*
+ Moo^dag - Moe^dag (Mee^-1)^dag Meo^dag
+ */
+template<class Impl>
+RealD CayleyFermion5D<Impl>::MpcDagMooee (const FermionField &in, FermionField &out)
+{
+  FermionField tmp(in.Grid()), buf(in.Grid());
+  
+  if ( in.Checkerboard() == Odd ) {
+    this->DhopEO(in,tmp,DaggerYes);
+  } else {
+    this->DhopOE(in,tmp,DaggerYes);
+  }
+  
+  ApplyFAndDhop(tmp,out,DaggerYes,&CayleyFermion5D<Impl>::MooeeInvDagMeooeDag5D);
+  MeooeDag5D(out,tmp,buf);
+  
+  MooeeDag(in,out);
+  
+  return axpy_norm(out,-1.0,tmp,out);
 }
 
 NAMESPACE_END(Grid);
