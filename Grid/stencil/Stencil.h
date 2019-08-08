@@ -7,6 +7,7 @@
      Copyright (C) 2015
 
  Author: Peter Boyle <paboyle@ph.ed.ac.uk>
+ Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
      This program is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published by
@@ -234,6 +235,8 @@ public:
   int face_table_computed;
   std::vector<Vector<std::pair<int,int> > > face_table ;
   Vector<int> surface_list;
+  Vector<int> local_surface_list;
+  Vector<int> local_interior_list;
 
   Vector<StencilEntry>  _entries; // Resident in managed memory
   std::vector<Packet> Packets;
@@ -632,6 +635,33 @@ public:
       }
     }
   }
+  
+  /*
+   Suppose this stencil is Even (Odd):
+   build the list of Even (Odd) sites that have to be shared with
+   other processors (whether or not on the same node) before
+   they are accessed through the stencil (-> local_surface_list).
+   This is done by calling the Odd (Even) stencil and
+   checking if the stencil call is local in all directions.
+   */
+  template<class StencilImpl>
+  void BuildLocalSurfaceList(int Ls,int vol4, StencilImpl* stOther){
+    
+    assert(this->_checkerboard == !stOther->_checkerboard);
+    
+    for(int site = 0; site<vol4; site++){
+      int local = 1;
+      for(int point=0; point<this->_npoints; point++){
+        if( !(stOther->GetNodeLocal(site*Ls,point)) ) local = 0;
+      }
+      if(local == 0) this->local_surface_list.push_back(site);
+      else this->local_interior_list.push_back(site);
+    }
+    
+    std::cout << GridLogDebug << "*** Stencil initialisation: BuildLocalSurfaceList ***" << this->local_surface_list.size()  << std::endl;
+    std::cout << GridLogDebug << "local_surface_list  size = " << this->local_surface_list.size()  << std::endl;
+    std::cout << GridLogDebug << "local_interior_list size = " << this->local_interior_list.size() << std::endl;
+  }
 
   CartesianStencil(GridBase *grid,
 		   int npoints,
@@ -661,6 +691,8 @@ public:
 
     _unified_buffer_size=0;
     surface_list.resize(0);
+    local_surface_list.resize(0);
+    local_interior_list.resize(0);
 
     int osites  = _grid->oSites();
     
