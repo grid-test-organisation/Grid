@@ -380,14 +380,24 @@ void WilsonFermion5D<Impl>::DhopInternalOverlappedComms(StencilImpl & st, Lebesg
   DhopCommTime -=usecond();
   std::vector<std::vector<CommsRequest_t> > requests;
   st.CommunicateBegin(requests);
+  /////////////////////////////
+  // Complete comms
+  /////////////////////////////
+  st.CommunicateComplete(requests);
+  DhopCommTime   +=usecond();
 
   /////////////////////////////
   // Overlap with comms
   /////////////////////////////
   DhopFaceTime-=usecond();
   st.CommsMergeSHM(compressor);// Could do this inside parallel region overlapped with comms
+  accelerator_barrier();
   DhopFaceTime+=usecond();
-      
+
+  DhopFaceTime-=usecond();
+  st.CommsMerge(compressor);
+  DhopFaceTime+=usecond();
+
   /////////////////////////////
   // do the compute interior
   /////////////////////////////
@@ -398,21 +408,12 @@ void WilsonFermion5D<Impl>::DhopInternalOverlappedComms(StencilImpl & st, Lebesg
   } else {
     Kernels::DhopKernel   (Opt,st,U,st.CommBuf(),LLs,U.oSites(),in,out,1,0);
   }
+  accelerator_barrier();
   DhopComputeTime+=usecond();
-
-  /////////////////////////////
-  // Complete comms
-  /////////////////////////////
-  st.CommunicateComplete(requests);
-  DhopCommTime   +=usecond();
 
   /////////////////////////////
   // do the compute exterior
   /////////////////////////////
-  DhopFaceTime-=usecond();
-  st.CommsMerge(compressor);
-  DhopFaceTime+=usecond();
-
   DhopComputeTime2-=usecond();
   if (dag == DaggerYes) {
     Kernels::DhopDagKernel(Opt,st,U,st.CommBuf(),LLs,U.oSites(),in,out,0,1);
