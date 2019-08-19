@@ -179,6 +179,8 @@ public:
     template<class Field>
     class SchurOperatorBase :  public LinearOperatorBase<Field> {
     public:
+      static constexpr int DaggerNo=0;
+      static constexpr int DaggerYes=1;
       virtual  RealD Mpc      (const Field &in, Field &out) =0;
       virtual  RealD MpcDag   (const Field &in, Field &out) =0;
       virtual void MpcDagMpc(const Field &in, Field &out,RealD &ni,RealD &no) {
@@ -289,6 +291,37 @@ public:
 	_Mat.MeooeDag(in,out);
 	_Mat.MooeeInvDag(out,tmp);
 	_Mat.MeooeDag(tmp,out);
+	_Mat.MooeeInvDag(out,tmp);
+
+	return axpy_norm(out,-1.0,tmp,in);
+      }
+    };
+    template<class Matrix,class Field>
+      class SchurDiagOneFusedRH :  public SchurOperatorBase<Field> {
+    protected:
+      Matrix &_Mat;
+    public:
+      typedef typename Matrix::WilsonFermion5DType WilsonFermion5D;
+      SchurDiagOneFusedRH (Matrix &Mat): _Mat(Mat){};
+
+      virtual  RealD Mpc      (const Field &in, Field &out) {
+	Field tmp(in.Grid());
+
+	_Mat.DhopGFOverlappedComms(in ,out,this->DaggerNo,&WilsonFermion5D::MooeeInv,&WilsonFermion5D::Meooe5D);
+	_Mat.DhopGFOverlappedComms(out,tmp,this->DaggerNo,&WilsonFermion5D::MooeeInv,&WilsonFermion5D::Meooe5D);
+
+	return axpy_norm(out,-1.0,tmp,in);
+      }
+      virtual  RealD MpcDag   (const Field &in, Field &out){
+	Field tmp(in.Grid());
+
+	if ( in.Checkerboard() == Odd ) {
+	  _Mat.DhopEO(in,out,this->DaggerYes);
+	} else {
+	  _Mat.DhopOE(in,out,this->DaggerYes);
+	}
+	_Mat.DhopGFOverlappedComms(out,tmp,this->DaggerYes,&WilsonFermion5D::MeooeDag5D,&WilsonFermion5D::MooeeInvDag);
+	_Mat.MeooeDag5D(tmp,out);
 	_Mat.MooeeInvDag(out,tmp);
 
 	return axpy_norm(out,-1.0,tmp,in);
