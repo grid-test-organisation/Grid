@@ -71,6 +71,8 @@ class WilsonFermion5D : public WilsonKernels<Impl>, public WilsonFermion5DStatic
 public:
   INHERIT_IMPL_TYPES(Impl);
   typedef WilsonKernels<Impl> Kernels;
+  typedef WilsonFermion5D<Impl> WilsonFermion5DType;
+  typedef void (WilsonFermion5D<Impl>::*WilsonFermion5DInOutFunction)(const FermionField&, FermionField&);
   PmuStat stat;
 
   FermionField _tmp;
@@ -111,6 +113,9 @@ public:
   virtual void   MooeeDag    (const FermionField &in, FermionField &out){assert(0);};
   virtual void   MooeeInvDag (const FermionField &in, FermionField &out){assert(0);};
   virtual void   Mdir   (const FermionField &in, FermionField &out,int dir,int disp){assert(0);};   // case by case Wilson, Clover, Cayley, ContFrac, PartFrac
+
+  virtual void   Meooe5D       (const FermionField &in, FermionField &out){assert(0);};
+  virtual void   MeooeDag5D    (const FermionField &in, FermionField &out){assert(0);};
 
   // These can be overridden by fancy 5d chiral action
   virtual void DhopDeriv  (GaugeField &mat,const FermionField &U,const FermionField &V,int dag);
@@ -162,7 +167,13 @@ public:
 			       const FermionField &in, 
 			       FermionField &out,
 			       int dag);
-    
+
+  void DhopGFOverlappedComms(const FermionField &in,
+			       FermionField &out,
+			       int dag,
+			       WilsonFermion5DInOutFunction F,
+			       WilsonFermion5DInOutFunction G=nullptr);
+
   // Constructors
   WilsonFermion5D(GaugeField &_Umu,
 		  GridCartesian         &FiveDimGrid,

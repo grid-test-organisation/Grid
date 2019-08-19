@@ -425,6 +425,126 @@ void WilsonFermion5D<Impl>::DhopInternalOverlappedComms(StencilImpl & st, Lebesg
   DhopComputeTime2+=usecond();
 }
 
+template<class Impl>
+void WilsonFermion5D<Impl>::DhopGFOverlappedComms(const FermionField &in,
+						  FermionField &out,
+						  int dag,
+						  WilsonFermion5DInOutFunction F,
+						  WilsonFermion5DInOutFunction G)
+{
+  assert(in.Grid()->_isCheckerBoarded);
+  conformable(this->tmp().Grid(),out.Grid());
+
+  if ( WilsonKernelsStatic::Comms == WilsonKernelsStatic::CommsThenCompute ) {
+
+    // Call GF on all sites    
+    if( G != nullptr ) {
+      (this->*F)(in,out);
+      (this->*G)(out,this->tmp());
+    } else {
+      (this->*F)(in,this->tmp());
+    }
+    // Call Dhop on all sites
+    if ( in.Checkerboard() == Odd ) {
+      this->DhopEO(this->tmp(),out,dag);
+    } else {
+      this->DhopOE(this->tmp(),out,dag);
+    }
+
+  } else {
+    Compressor compressor(dag);
+    StencilImpl* st;
+    DoubledGaugeField *U;
+    
+    if ( in.Checkerboard() == Odd ) {
+      st = &(this->StencilOdd);
+      U = &(this->UmuEven);
+    } else {
+      st = &(this->StencilEven);
+      U = &(this->UmuOdd);
+    }
+    
+    int LLs = in.Grid()->_rdimensions[0];
+    int len = U->Grid()->oSites();
+    int Opt = WilsonKernelsStatic::Opt;
+
+    // Call GF on surface sites
+    if( G != nullptr ) {
+      out.set_site_list        (&(st->local_surface_list));
+      this->tmp().set_site_list(&(st->local_surface_list));
+      (this->*F)(in,out);
+      (this->*G)(out,this->tmp());
+    } else {
+      this->tmp().set_site_list(&(st->local_surface_list));
+      (this->*F)(in,this->tmp());
+    }
+    
+    // Start comms
+    DhopCalls++;
+    DhopTotalTime-=usecond();
+    DhopFaceTime-=usecond();
+    st->HaloExchangeOptGather(this->tmp(),compressor);
+    DhopFaceTime+=usecond();
+    
+    DhopCommTime -=usecond();
+    std::vector<std::vector<CommsRequest_t> > requests;
+    st->CommunicateBegin(requests);
+    
+    DhopFaceTime-=usecond();
+    st->CommsMergeSHM(compressor);
+    DhopFaceTime+=usecond();
+    DhopTotalTime+=usecond();
+    
+    // Call GF on interior sites
+    if( G != nullptr ) {
+      out.set_site_list        (&(st->local_interior_list));
+      this->tmp().set_site_list(&(st->local_interior_list));
+      (this->*F)(in,out);
+      (this->*G)(out,this->tmp());
+    } else {
+      this->tmp().set_site_list(&(st->local_interior_list));
+      (this->*F)(in,this->tmp());
+    }
+    
+    // Call Dhop interior
+    DhopTotalTime-=usecond();
+    DhopComputeTime-=usecond();
+    if (dag == DaggerYes) {
+      Kernels::DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),out,1,0);
+    } else {
+      Kernels::DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),out,1,0);
+    }
+    DhopComputeTime+=usecond();
+    
+    // Complete comms
+    st->CommunicateComplete(requests);
+    DhopCommTime   +=usecond();
+    
+    DhopFaceTime-=usecond();
+    st->CommsMerge(compressor);
+    DhopFaceTime+=usecond();
+    
+    // Call Dhop exterior
+    DhopComputeTime2-=usecond();
+    if (dag == DaggerYes) {
+      Kernels::DhopDagKernel(Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),out,0,1);
+    } else {
+      Kernels::DhopKernel   (Opt,*st,*U,st->CommBuf(),LLs,U->oSites(),this->tmp(),out,0,1);
+    }
+    DhopComputeTime2+=usecond();
+    DhopTotalTime+=usecond();
+
+    if( G != nullptr ) {
+      out.unset_site_list();
+      this->tmp().unset_site_list();
+    } else {
+      this->tmp().unset_site_list();
+    }
+    if ( in.Checkerboard() == Odd ) out.Checkerboard() = Even;
+    else                            out.Checkerboard() = Odd;
+
+  }
+}
 
 template<class Impl>
 void WilsonFermion5D<Impl>::DhopInternalSerialComms(StencilImpl & st, LebesgueOrder &lo,
