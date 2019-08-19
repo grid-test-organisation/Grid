@@ -8,6 +8,7 @@
 
 Author: Azusa Yamaguchi <ayamaguc@staffmail.ed.ac.uk>
 Author: Peter Boyle <paboyle@ph.ed.ac.uk>
+Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -327,6 +328,65 @@ public:
 	return axpy_norm(out,-1.0,tmp,in);
       }
     };
+template<class Matrix,class Field>
+  class SchurDiagOneFusedLH :  public SchurOperatorBase<Field> {
+ protected:
+  Matrix &_Mat;
+ public:
+  typedef typename Matrix::WilsonFermion5DType WilsonFermion5D;
+  SchurDiagOneFusedLH (Matrix &Mat): _Mat(Mat){};
+
+  virtual  RealD Mpc      (const Field &in, Field &out) {
+    Field tmp(in.Grid());
+
+    _Mat.DhopGFOverlappedComms(in ,tmp,this->DaggerNo,&WilsonFermion5D::Meooe5D);
+    _Mat.DhopGFOverlappedComms(tmp,out,this->DaggerNo,&WilsonFermion5D::MooeeInv,&WilsonFermion5D::Meooe5D);
+    _Mat.MooeeInv(out,tmp);
+
+    return axpy_norm(out,-1.0,tmp,in);
+  }
+  virtual  RealD MpcDag   (const Field &in, Field &out){
+    Field tmp(in.Grid());
+
+    _Mat.DhopGFOverlappedComms(in ,tmp,this->DaggerYes,&WilsonFermion5D::MooeeInvDag);
+    _Mat.DhopGFOverlappedComms(tmp,out,this->DaggerYes,&WilsonFermion5D::MeooeDag5D,&WilsonFermion5D::MooeeInvDag);
+    _Mat.MeooeDag5D(out,tmp);
+
+    return axpy_norm(out,-1.0,tmp,in);
+  }
+};
+template<class Matrix,class Field>
+  class SchurDiagMooeeFused :  public SchurOperatorBase<Field> {
+ protected:
+  Matrix &_Mat;
+ public:
+  typedef typename Matrix::WilsonFermion5DType WilsonFermion5D;
+  SchurDiagMooeeFused (Matrix &Mat): _Mat(Mat){};
+
+  virtual  RealD Mpc      (const Field &in, Field &out) {
+    Field tmp(in.Grid());
+
+    _Mat.DhopGFOverlappedComms(in ,out,this->DaggerNo,&WilsonFermion5D::Meooe5D);
+    _Mat.DhopGFOverlappedComms(out,tmp,this->DaggerNo,&WilsonFermion5D::MooeeInv,&WilsonFermion5D::Meooe5D);
+    _Mat.Mooee(in,out);
+
+    return axpy_norm(out,-1.0,tmp,out);
+  }
+  virtual  RealD MpcDag   (const Field &in, Field &out){
+    Field tmp(in.Grid());
+
+    if ( in.Checkerboard() == Odd ) {
+      _Mat.DhopEO(in,tmp,this->DaggerYes);
+    } else {
+      _Mat.DhopOE(in,tmp,this->DaggerYes);
+    }
+    _Mat.DhopGFOverlappedComms(tmp,out,this->DaggerYes,&WilsonFermion5D::MeooeDag5D,&WilsonFermion5D::MooeeInvDag);
+    _Mat.MeooeDag5D(out,tmp);
+
+    _Mat.MooeeDag(in,out);
+    return axpy_norm(out,-1.0,tmp,out);
+  }
+};
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Left  handed Moo^-1 ; (Moo - Moe Mee^-1 Meo) psi = eta  -->  ( 1 - Moo^-1 Moe Mee^-1 Meo ) psi = Moo^-1 eta
     // Right handed Moo^-1 ; (Moo - Moe Mee^-1 Meo) Moo^-1 Moo psi = eta  -->  ( 1 - Moe Mee^-1 Meo ) Moo^-1 phi=eta ; psi = Moo^-1 phi
