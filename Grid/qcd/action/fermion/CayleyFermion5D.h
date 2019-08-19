@@ -93,6 +93,29 @@ public:
 	      Vector<Coeff_t> &diag,
 	      Vector<Coeff_t> &upper);
 
+  accelerator_inline void M5DInner(int ss, int Ls, const FermionFieldView &psi,
+				   const FermionFieldView &phi,
+				   FermionFieldView &chi,
+				   Coeff_t *lower,
+				   Coeff_t *diag,
+				   Coeff_t *upper);
+  accelerator_inline void M5DdagInner(int ss, int Ls, const FermionFieldView &psi,
+				      const FermionFieldView &phi,
+				      FermionFieldView &chi,
+				      Coeff_t *lower,
+				      Coeff_t *diag,
+				      Coeff_t *upper);
+  accelerator_inline void MooeeInvInner (const int ss, const int Ls,
+					 const FermionFieldView &in_v, FermionFieldView &out_v,
+					 Coeff_t *dee_v,
+					 Coeff_t *lee_v, Coeff_t *leem_v,
+					 Coeff_t *uee_v, Coeff_t *ueem_v);
+  accelerator_inline void MooeeInvDagInner (const int ss, const int Ls,
+					    const FermionFieldView &in_v, FermionFieldView &out_v,
+					    Coeff_t *dee_v,
+					    Coeff_t *lee_v, Coeff_t *leem_v,
+					    Coeff_t *uee_v, Coeff_t *ueem_v);
+
   virtual void   Instantiatable(void)=0;
 
   // force terms; five routines; default to Dhop on diagonal

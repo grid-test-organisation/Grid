@@ -40,13 +40,13 @@ NAMESPACE_BEGIN(Grid);
 /*     5D INNER FUNCTIONS     */
 /******************************/
 
-template<class FermionFieldView, class CoeffsPtr>
-  accelerator_inline void M5DInner(int ss, int Ls, const FermionFieldView &psi,
+template<class Impl>
+  accelerator_inline void CayleyFermion5D<Impl>::M5DInner(int ss, int Ls, const FermionFieldView &psi,
 				   const FermionFieldView &phi,
 				   FermionFieldView &chi,
-				   CoeffsPtr lower,
-				   CoeffsPtr diag,
-				   CoeffsPtr upper)
+				   Coeff_t *lower,
+				   Coeff_t *diag,
+				   Coeff_t *upper)
 {
   typedef decltype(coalescedRead(psi[0])) spinor;
   spinor tmp1, tmp2;
@@ -59,13 +59,13 @@ template<class FermionFieldView, class CoeffsPtr>
   }
 }
 
-template<class FermionFieldView, class CoeffsPtr>
-  accelerator_inline void M5DdagInner(int ss, int Ls, const FermionFieldView &psi,
+template<class Impl>
+  accelerator_inline void CayleyFermion5D<Impl>::M5DdagInner(int ss, int Ls, const FermionFieldView &psi,
 				      const FermionFieldView &phi,
 				      FermionFieldView &chi,
-				      CoeffsPtr lower,
-				      CoeffsPtr diag,
-				      CoeffsPtr upper)
+				      Coeff_t *lower,
+				      Coeff_t *diag,
+				      Coeff_t *upper)
 {
   typedef decltype(coalescedRead(psi[0])) spinor;
   spinor tmp1, tmp2;
@@ -78,12 +78,12 @@ template<class FermionFieldView, class CoeffsPtr>
   }
 }
 
-template<class FermionFieldView, class CoeffsPtr>
-  accelerator_inline void MooeeInvInner (const int ss, const int Ls,
+template<class Impl>
+  accelerator_inline void CayleyFermion5D<Impl>::MooeeInvInner (const int ss, const int Ls,
 					 const FermionFieldView &in_v, FermionFieldView &out_v,
-					 const CoeffsPtr dee_v,
-					 const CoeffsPtr lee_v, const CoeffsPtr leem_v,
-					 const CoeffsPtr uee_v, const CoeffsPtr ueem_v)
+					 Coeff_t *dee_v,
+					 Coeff_t *lee_v, Coeff_t *leem_v,
+					 Coeff_t *uee_v, Coeff_t *ueem_v)
 {
   typedef decltype(coalescedRead(in_v[0])) spinor;
   spinor tmp, acc, res;
@@ -119,12 +119,12 @@ template<class FermionFieldView, class CoeffsPtr>
   }
 }
 
-template<class FermionFieldView, class CoeffsPtr>
-  accelerator_inline void MooeeInvDagInner (const int ss, const int Ls,
+template<class Impl>
+  accelerator_inline void CayleyFermion5D<Impl>::MooeeInvDagInner (const int ss, const int Ls,
 					    const FermionFieldView &in_v, FermionFieldView &out_v,
-					    const CoeffsPtr dee_v,
-					    const CoeffsPtr lee_v, const CoeffsPtr leem_v,
-					    const CoeffsPtr uee_v, const CoeffsPtr ueem_v)
+					    Coeff_t *dee_v,
+					    Coeff_t *lee_v, Coeff_t *leem_v,
+					    Coeff_t *uee_v, Coeff_t *ueem_v)
 {
   typedef decltype(coalescedRead(in_v[0])) spinor;
   spinor tmp, acc, res;
