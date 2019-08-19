@@ -98,12 +98,44 @@ public:
   accelerator_inline const vobj & operator[](size_t i) const { return this->_odata[i]; };
   accelerator_inline vobj       & operator[](size_t i)       { return this->_odata[i]; };
 
+  accelerator_inline uint64_t get_index(uint64_t i) { return i; }
+
   accelerator_inline uint64_t begin(void) const { return 0;};
   accelerator_inline uint64_t end(void)   const { return this->_odata_size; };
   accelerator_inline uint64_t size(void)  const { return this->_odata_size; };
 
   LatticeView(const LatticeAccelerator<vobj> &refer_to_me) : LatticeAccelerator<vobj> (refer_to_me)
   {
+  }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// A View class which provides accessor to a subset of the lattice
+/////////////////////////////////////////////////////////////////////////////////////////
+template<class vobj>
+class LatticeViewList : public LatticeView<vobj>
+{
+ private:
+  // private pointer to the list of sites:
+  // it does not change even if Lattice siteList does
+  int *list;
+  uint64_t length;
+ public:
+  // hide base class member functions
+  accelerator_inline uint64_t get_index(uint64_t i) { return list[i]; }
+  accelerator_inline uint64_t end(void)       const { return length;  }
+  accelerator_inline uint64_t size(void)      const { return length;  }
+
+ LatticeViewList(const LatticeAccelerator<vobj> &refer_to_me, Vector<int> *_list) :  LatticeView<vobj> (refer_to_me)
+  {
+    if( _list != nullptr ) {
+      list   = _list->data();
+      length = _list->size();
+    }
+    else {
+      list   = nullptr;
+      length = 0;
+    }
   }
 };
 
@@ -168,6 +200,14 @@ class Lattice : public LatticeAccelerator<vobj>
 {
 public:
   GridBase *Grid(void) const { return this->_grid; }
+
+  Vector<int> *siteList = nullptr;
+  // point siteList to where the list of sites is
+  inline void set_site_list  (Vector<int> *l) { siteList = l; }
+  inline void unset_site_list()               { siteList = nullptr; }
+  inline bool list_is_unset() const           { return siteList == nullptr; }
+  inline uint64_t get_list_size()             { return siteList->size(); }
+
   ///////////////////////////////////////////////////
   // Member types
   ///////////////////////////////////////////////////
@@ -203,9 +243,14 @@ public:
   // The view is trivially copy constructible and may be copied to an accelerator device
   // in device lambdas
   /////////////////////////////////////////////////////////////////////////////////
-  LatticeView<vobj> View (void) const 
+  LatticeView<vobj> View (void) const
   {
     LatticeView<vobj> accessor(*( (LatticeAccelerator<vobj> *) this));
+    return accessor;
+  }
+  LatticeViewList<vobj> ViewList (void) const
+  {
+    LatticeViewList<vobj> accessor(*( (LatticeAccelerator<vobj> *) this), siteList);
     return accessor;
   }
   
@@ -214,6 +259,7 @@ public:
       dealloc();
     }
    }
+
   ////////////////////////////////////////////////////////////////////////////////
   // Expression Template closure support
   ////////////////////////////////////////////////////////////////////////////////
@@ -461,6 +507,6 @@ template<class vobj> std::ostream& operator<< (std::ostream& stream, const Latti
   }
   return stream;
 }
-  
+
 NAMESPACE_END(Grid);
 
