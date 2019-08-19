@@ -176,27 +176,39 @@ CayleyFermion5D<Impl>::M5D(const FermionField &psi_i,
   
   chi_i.Checkerboard()=psi_i.Checkerboard();
   GridBase *grid=psi_i.Grid();
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
+
   auto pdiag  = &diag[0];
   auto pupper = &upper[0];
   auto plower = &lower[0];
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   int Ls =this->Ls;
 
   // 10 = 3 complex mult + 2 complex add
   // Flops = 10.0*(Nc*Ns) *Ls*vol (/2 for red black counting)
   M5Dcalls++;
-  M5Dtime-=usecond();
-
-  uint64_t nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss= sss*Ls;
-    M5DInner(ss,Ls,psi,phi,chi,plower,pdiag,pupper);
-  });
-  M5Dtime+=usecond();
+ 
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        M5DInner(ss,Ls,psi,phi,chi,plower,pdiag,pupper);
+      });
+    M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5DInner(ss,Ls,psi,phi,chi,plower,pdiag,pupper);
+      });
+  }
 }
 
 template<class Impl>  
@@ -210,26 +222,37 @@ CayleyFermion5D<Impl>::M5Ddag(const FermionField &psi_i,
 {
   chi_i.Checkerboard()=psi_i.Checkerboard();
   GridBase *grid=psi_i.Grid();
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
+
   auto pdiag  = &diag[0];
   auto pupper = &upper[0];
   auto plower = &lower[0];
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   int Ls=this->Ls;
 
-  // Flops = 6.0*(Nc*Ns) *Ls*vol
   M5Dcalls++;
-  M5Dtime-=usecond();
 
-  uint64_t nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss=sss*Ls;
-    M5DdagInner(ss,Ls,psi,phi,chi,plower,pdiag,pupper);
-  });
-  M5Dtime+=usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+	uint64_t ss=sss*Ls;
+        M5DdagInner(ss,Ls,psi,phi,chi,plower,pdiag,pupper);
+      });
+    M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5DdagInner(ss,Ls,psi,phi,chi,plower,pdiag,pupper);
+      });
+  }
 }
 
 template<class Impl>
@@ -239,9 +262,6 @@ CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi
   chi_i.Checkerboard()=psi_i.Checkerboard();
   GridBase *grid=psi_i.Grid();
 
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
-
   int Ls=this->Ls;
 
   auto plee  = & lee [0];
@@ -249,16 +269,27 @@ CayleyFermion5D<Impl>::MooeeInv    (const FermionField &psi_i, FermionField &chi
   auto puee  = & uee [0];
   auto pleem = & leem[0];
   auto pueem = & ueem[0];
-
   MooeeInvCalls++;
-  MooeeInvTime-=usecond();
-  uint64_t nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss=sss*Ls;
-    MooeeInvInner(ss,Ls,psi,chi,pdee,puee,pueem,plee,pleem);
-  });
 
-  MooeeInvTime+=usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+	uint64_t ss=sss*Ls;
+	MooeeInvInner(ss,Ls,psi,chi,pdee,puee,pueem,plee,pleem);
+      });
+    MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvInner(ss,Ls,psi,chi,pdee,puee,pueem,plee,pleem);
+      });
+  }
   
 }
 
@@ -270,28 +301,33 @@ CayleyFermion5D<Impl>::MooeeInvDag (const FermionField &psi_i, FermionField &chi
   GridBase *grid=psi_i.Grid();
   int Ls=this->Ls;
 
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
-
   auto plee  = & lee [0];
   auto pdee  = & dee [0];
   auto puee  = & uee [0];
   auto pleem = & leem[0];
   auto pueem = & ueem[0];
 
-  assert(psi.Checkerboard() == psi.Checkerboard());
-
   MooeeInvCalls++;
-  MooeeInvTime-=usecond();
 
-
-  uint64_t nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss=sss*Ls;
-    MooeeInvDagInner(ss,Ls,psi,chi,pdee,puee,pueem,plee,pleem);
-  });
-  MooeeInvTime+=usecond();
-
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvDagInner(ss,Ls,psi,chi,pdee,puee,pueem,plee,pleem);
+      });
+    MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvDagInner(ss,Ls,psi,chi,pdee,puee,pueem,plee,pleem);
+      });
+  }
 }
 
 NAMESPACE_END(Grid);
