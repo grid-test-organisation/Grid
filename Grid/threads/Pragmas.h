@@ -80,8 +80,10 @@ Author: paboyle <paboyle@ph.ed.ac.uk>
 
 extern uint32_t gpu_threads;
 
-#define accelerator        __host__ __device__
-#define accelerator_inline __host__ __device__ inline
+#define accelerator               __host__ __device__
+#define accelerator_only          __device__
+#define accelerator_inline        __host__ __device__ inline
+#define accelerator_only_inline   __device__ inline
 
 template<typename lambda>  __global__
 void LambdaApplySIMT(uint64_t Isites, uint64_t Osites, lambda Lambda)
@@ -112,7 +114,7 @@ void LambdaApplySIMT(uint64_t Isites, uint64_t Osites, lambda Lambda)
 #define accelerator_forNB( iterator, num, nsimd, ... )			\
   {									\
     typedef uint64_t Iterator;						\
-    auto lambda = [=] accelerator (Iterator lane,Iterator iterator) mutable { \
+    auto lambda = [=] accelerator_only (Iterator lane,Iterator iterator) mutable { \
       __VA_ARGS__;							\
     };									\
     dim3 cu_threads(gpu_threads,nsimd);					\
@@ -128,6 +130,7 @@ void LambdaApplySIMT(uint64_t Isites, uint64_t Osites, lambda Lambda)
 #else
 
 #define accelerator 
+#define accelerator_only
 #define accelerator_inline strong_inline
 #define accelerator_for(iterator,num,nsimd, ... )   thread_for(iterator, num, { __VA_ARGS__ });
 #define accelerator_forNB(iterator,num,nsimd, ... ) thread_for(iterator, num, { __VA_ARGS__ });

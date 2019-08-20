@@ -75,29 +75,29 @@ void coalescedWriteNonTemporal(vobj & __restrict__ vec,const vobj & __restrict__
   vstream(vec, extracted);
 }
 #else
-accelerator_inline int SIMTlane(int Nsimd) { return threadIdx.y; } // CUDA specific
+accelerator_only_inline int SIMTlane(int Nsimd) { return threadIdx.y; } // CUDA specific
 
 //////////////////////////////////////////
 // Extract and insert slices on the GPU
 //////////////////////////////////////////
-template<class vobj> accelerator_inline
+template<class vobj> accelerator_only_inline
 typename vobj::scalar_object coalescedRead(const vobj & __restrict__ vec,int lane=SIMTlane(vobj::Nsimd()))
 {
   return extractLane(lane,vec);
 }
-template<class vobj> accelerator_inline
+template<class vobj> accelerator_only_inline
 typename vobj::scalar_object coalescedReadPermute(const vobj & __restrict__ vec,int ptype,int doperm,int lane=SIMTlane(vobj::Nsimd()))
 {
   int mask = vobj::Nsimd() >> (ptype + 1);		
   int plane= doperm ? lane ^ mask : lane;
   return extractLane(plane,vec);
 }
-template<class vobj> accelerator_inline
+template<class vobj> accelerator_only_inline
 void coalescedWrite(vobj & __restrict__ vec,const typename vobj::scalar_object & __restrict__ extracted,int lane=SIMTlane(vobj::Nsimd()))
 {
   insertLane(lane,vec,extracted);
 }
-template<class vobj> accelerator_inline
+template<class vobj> accelerator_only_inline
 void coalescedWriteNonTemporal(vobj & __restrict__ vec,const vobj & __restrict__ extracted,int lane=0)
 {
   insertLane(lane,vec,extracted);

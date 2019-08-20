@@ -91,7 +91,7 @@ public:
 
   // Rvalue
 #ifdef __CUDA_ARCH__
-  accelerator_inline const typename vobj::scalar_object operator()(size_t i) const { return coalescedRead(this->_odata[i]); }
+  accelerator_only_inline const typename vobj::scalar_object operator()(size_t i) const { return coalescedRead(this->_odata[i]); }
 #else 
   accelerator_inline const vobj & operator()(size_t i) const { return this->_odata[i]; }
 #endif
