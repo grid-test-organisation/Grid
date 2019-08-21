@@ -11,6 +11,7 @@ Author: Peter Boyle <paboyle@ph.ed.ac.uk>
 Author: Peter Boyle <peterboyle@Peters-MacBook-Pro-2.local>
 Author: paboyle <paboyle@ph.ed.ac.uk>
 Author: David Murphy <dmurphy@phys.columbia.edu>
+Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,19 +44,16 @@ void MobiusEOFAFermion<Impl>::M5D(const FermionField &psi_i, const FermionField 
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
-
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   // Flops = 6.0*(Nc*Ns) *Ls*vol
   this->M5Dcalls++;
-  this->M5Dtime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss = sss*Ls;
+  auto pdiag = &diag[0];
+  auto pupper = &upper[0];
+  auto plower = &lower[0];
+
+  auto M5Dinner = [=] accelerator_only (uint64_t ss, auto psi, auto phi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1;
     spinor tmp2;
@@ -64,11 +62,30 @@ void MobiusEOFAFermion<Impl>::M5D(const FermionField &psi_i, const FermionField 
       uint64_t idx_l = ss+((s+Ls-1)%Ls);
       spProj5m(tmp1, psi(idx_u));
       spProj5p(tmp2, psi(idx_l));
-      coalescedWrite(chi[ss+s], diag[s]*phi(ss+s) + upper[s]*tmp1 + lower[s]*tmp2);
+      coalescedWrite(chi[ss+s], pdiag[s]*phi(ss+s) + pupper[s]*tmp1 + plower[s]*tmp2);
     }
-  });
-
-  this->M5Dtime += usecond();
+  };
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+    this->M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -79,22 +96,21 @@ void MobiusEOFAFermion<Impl>::M5D_shift(const FermionField &psi_i, const Fermion
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
 
   auto pm  = this->pm;
   int shift_s = (pm == 1) ? (Ls-1) : 0; // s-component modified by shift operator
 
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   // Flops = 6.0*(Nc*Ns) *Ls*vol
   this->M5Dcalls++;
-  this->M5Dtime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss = sss*Ls;
+  auto pdiag = &diag[0];
+  auto pupper = &upper[0];
+  auto plower = &lower[0];
+  auto pshift_coeffs = &shift_coeffs[0];
+
+  auto M5Dinner = [=] accelerator_only (uint64_t ss, auto psi, auto phi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1;
     spinor tmp2;
@@ -108,11 +124,31 @@ void MobiusEOFAFermion<Impl>::M5D_shift(const FermionField &psi_i, const Fermion
       if(pm == 1){ spProj5p(tmp, psi(ss+shift_s)); }
       else       { spProj5m(tmp, psi(ss+shift_s)); }
 
-      coalescedWrite(chi[ss+s], diag[s]*phi(ss+s) + upper[s]*tmp1 +lower[s]*tmp2 + shift_coeffs[s]*tmp);
+      coalescedWrite(chi[ss+s], pdiag[s]*phi(ss+s) + pupper[s]*tmp1 +plower[s]*tmp2 + pshift_coeffs[s]*tmp);
     }
-  });
-
-  this->M5Dtime += usecond();
+  };
+  
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+	uint64_t ss=sss*Ls;
+	M5Dinner(ss,psi,phi,chi);
+      });
+    this->M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+	uint64_t ss=chi.get_index(sss)*Ls;
+	M5Dinner(ss,psi,phi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -122,20 +158,16 @@ void MobiusEOFAFermion<Impl>::M5Ddag(const FermionField &psi_i, const FermionFie
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
-
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   // Flops = 6.0*(Nc*Ns) *Ls*vol
   this->M5Dcalls++;
-  this->M5Dtime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(), {
-    uint64_t ss = sss*Ls;
+  auto pdiag = &diag[0];
+  auto pupper = &upper[0];
+  auto plower = &lower[0];
 
+  auto M5Dinner = [=] accelerator_only (uint64_t ss, auto psi, auto phi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1, tmp2;
 
@@ -144,11 +176,31 @@ void MobiusEOFAFermion<Impl>::M5Ddag(const FermionField &psi_i, const FermionFie
       uint64_t idx_l = ss+((s+Ls-1)%Ls);
       spProj5p(tmp1, psi(idx_u));
       spProj5m(tmp2, psi(idx_l));
-      coalescedWrite(chi[ss+s], diag[s]*phi(ss+s) + upper[s]*tmp1 + lower[s]*tmp2);
+      coalescedWrite(chi[ss+s], pdiag[s]*phi(ss+s) + pupper[s]*tmp1 + plower[s]*tmp2);
     }
-  });
+  };
 
-  this->M5Dtime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+    this->M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -160,22 +212,19 @@ void MobiusEOFAFermion<Impl>::M5Ddag_shift(const FermionField &psi_i, const Ferm
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
   int shift_s = (this->pm == 1) ? (Ls-1) : 0; // s-component modified by shift operator
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
-
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   // Flops = 6.0*(Nc*Ns) *Ls*vol
   this->M5Dcalls++;
-  this->M5Dtime -= usecond();
+
+  auto pdiag = &diag[0];
+  auto pupper = &upper[0];
+  auto plower = &lower[0];
+  auto pshift_coeffs = &shift_coeffs[0];
 
   auto pm = this->pm;
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    uint64_t ss = sss*Ls;
-
+  auto M5Dinner = [=] accelerator_only (uint64_t ss, auto psi, auto phi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1, tmp2, tmp;
     tmp1=Zero();
@@ -189,16 +238,36 @@ void MobiusEOFAFermion<Impl>::M5Ddag_shift(const FermionField &psi_i, const Ferm
       spProj5p(tmp1, psi(idx_u));
       spProj5m(tmp2, psi(idx_l));
 
-      if(s==(Ls-1)) coalescedWrite(chi[ss+s], chi(ss+s)+ diag[s]*phi(ss+s) + upper[s]*tmp1 + lower[s]*tmp2);
-      else          coalescedWrite(chi[ss+s], diag[s]*phi(ss+s) + upper[s]*tmp1 + lower[s]*tmp2);
+      if(s==(Ls-1)) coalescedWrite(chi[ss+s], chi(ss+s)+ pdiag[s]*phi(ss+s) + pupper[s]*tmp1 + plower[s]*tmp2);
+      else          coalescedWrite(chi[ss+s], pdiag[s]*phi(ss+s) + pupper[s]*tmp1 + plower[s]*tmp2);
       if(pm == 1){ spProj5p(tmp, psi(ss+s)); }
       else       { spProj5m(tmp, psi(ss+s)); }
 
-      coalescedWrite(chi[ss+shift_s],chi(ss+shift_s)+shift_coeffs[s]*tmp);
+      coalescedWrite(chi[ss+shift_s],chi(ss+shift_s)+pshift_coeffs[s]*tmp);
     }
-  });
+  };
 
-  this->M5Dtime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+    this->M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -207,8 +276,8 @@ void MobiusEOFAFermion<Impl>::MooeeInv(const FermionField &psi_i, FermionField &
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
+
+  if(this->shift != 0.0){ MooeeInv_shift(psi_i,chi_i); return; }
 
   auto plee = & this->lee [0];
   auto pdee = & this->dee [0];
@@ -216,16 +285,9 @@ void MobiusEOFAFermion<Impl>::MooeeInv(const FermionField &psi_i, FermionField &
   auto pleem= & this->leem[0];
   auto pueem= & this->ueem[0];
 
-  if(this->shift != 0.0){ MooeeInv_shift(psi_i,chi_i); return; }
-
   this->MooeeInvCalls++;
-  this->MooeeInvTime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-
-    uint64_t ss = sss*Ls;
-
+  auto MooeeInvinner = [=] accelerator_only (uint64_t ss, auto psi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp;
 
@@ -254,9 +316,27 @@ void MobiusEOFAFermion<Impl>::MooeeInv(const FermionField &psi_i, FermionField &
       spProj5m(tmp, chi(ss+s+1));
       coalescedWrite(chi[ss+s], chi(ss+s) - puee[s]*tmp);
     }
-  });
-   
-  this->MooeeInvTime += usecond();
+  };
+
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+    this->MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -265,8 +345,6 @@ void MobiusEOFAFermion<Impl>::MooeeInv_shift(const FermionField &psi_i, FermionF
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
 
   auto pm = this->pm;
   auto plee = & this->lee [0];
@@ -277,13 +355,8 @@ void MobiusEOFAFermion<Impl>::MooeeInv_shift(const FermionField &psi_i, FermionF
   auto pMooeeInv_shift_lc   = &MooeeInv_shift_lc[0];
   auto pMooeeInv_shift_norm = &MooeeInv_shift_norm[0];
   this->MooeeInvCalls++;
-  this->MooeeInvTime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-
-    uint64_t ss = sss*Ls;
-
+  auto MooeeInvinner = [=] accelerator_only (uint64_t ss, auto psi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1,tmp2,tmp2_spProj;
 
@@ -320,9 +393,27 @@ void MobiusEOFAFermion<Impl>::MooeeInv_shift(const FermionField &psi_i, FermionF
       spProj5m(tmp1, chi(ss+s));
       coalescedWrite(chi[ss+s], chi(ss+s) + pMooeeInv_shift_norm[s]*tmp2_spProj);
     }
-  });
+  };
 
-  this->MooeeInvTime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+    this->MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -333,8 +424,6 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag(const FermionField &psi_i, FermionFiel
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
   int Ls = this->Ls;
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
 
   auto plee = & this->lee [0];
   auto pdee = & this->dee [0];
@@ -343,13 +432,8 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag(const FermionField &psi_i, FermionFiel
   auto pueem= & this->ueem[0];
 
   this->MooeeInvCalls++;
-  this->MooeeInvTime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-
-    uint64_t ss = sss*Ls;
-
+  auto MooeeInvinner = [=] accelerator_only (uint64_t ss, auto psi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp;
 
@@ -359,7 +443,7 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag(const FermionField &psi_i, FermionFiel
       spProj5m(tmp, chi(ss+s-1));
       coalescedWrite(chi[ss+s], psi(ss+s) - puee[s-1]*tmp);
     }
-    
+
     // U_m^{-\dag}
     for(int s=0; s<Ls-1; s++){
       spProj5p(tmp, chi(ss+s));
@@ -378,9 +462,27 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag(const FermionField &psi_i, FermionFiel
       spProj5p(tmp, chi(ss+s+1));
       coalescedWrite(chi[ss+s], chi(ss+s) - plee[s]*tmp);
     }
-  });
+  };
 
-  this->MooeeInvTime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+    this->MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -388,8 +490,6 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag_shift(const FermionField &psi_i, Fermi
 {
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase *grid = psi_i.Grid();
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
   int Ls = this->Ls;
 
   auto pm = this->pm;
@@ -402,13 +502,8 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag_shift(const FermionField &psi_i, Fermi
   auto pMooeeInvDag_shift_norm = &MooeeInvDag_shift_norm[0];
 
   this->MooeeInvCalls++;
-  this->MooeeInvTime -= usecond();
 
-  int nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-
-    uint64_t ss = sss*Ls;
-
+  auto MooeeInvinner = [=] accelerator_only (uint64_t ss, auto psi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1,tmp2,tmp2_spProj;
 
@@ -445,9 +540,27 @@ void MobiusEOFAFermion<Impl>::MooeeInvDag_shift(const FermionField &psi_i, Fermi
       spProj5p(tmp1, chi(ss+s));
       coalescedWrite(chi[ss+s], chi(ss+s) + pMooeeInvDag_shift_norm[s]*tmp2_spProj);
     }
-  });
+  };
 
-  this->MooeeInvTime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+    this->MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+  }
 }
 
 NAMESPACE_END(Grid);

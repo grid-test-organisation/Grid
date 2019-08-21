@@ -11,6 +11,7 @@ Author: Peter Boyle <paboyle@ph.ed.ac.uk>
 Author: Peter Boyle <peterboyle@Peters-MacBook-Pro-2.local>
 Author: paboyle <paboyle@ph.ed.ac.uk>
 Author: David Murphy <dmurphy@phys.columbia.edu>
+Author: Gianluca Filaci <g.filaci@ed.ac.uk>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,17 +46,15 @@ void DomainWallEOFAFermion<Impl>::M5D(const FermionField& psi_i, const FermionFi
   chi_i.Checkerboard() = psi_i.Checkerboard();
   int Ls = this->Ls;
   GridBase* grid = psi_i.Grid();
-  auto phi = phi_i.View();
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
   // Flops = 6.0*(Nc*Ns) *Ls*vol
   this->M5Dcalls++;
-  this->M5Dtime -= usecond();
-  
-  auto nloop=grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    auto ss=sss*Ls;
+
+  auto pdiag = &diag[0];
+  auto pupper = &upper[0];
+  auto plower = &lower[0];
+
+  auto M5Dinner = [=] accelerator_only (uint64_t ss, auto psi, auto phi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     for(int s=0; s<Ls; s++){
       spinor tmp1, tmp2;
@@ -63,11 +62,32 @@ void DomainWallEOFAFermion<Impl>::M5D(const FermionField& psi_i, const FermionFi
       uint64_t idx_l = ss+((s+Ls-1)%Ls);
       spProj5m(tmp1, psi(idx_u));
       spProj5p(tmp2, psi(idx_l));
-      coalescedWrite(chi[ss+s], diag[s]*phi(ss+s) + upper[s]*tmp1 + lower[s]*tmp2);
+      coalescedWrite(chi[ss+s], pdiag[s]*phi(ss+s) + pupper[s]*tmp1 + plower[s]*tmp2);
     }
-  });
+  };
 
-  this->M5Dtime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+    this->M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+  }
+
 }
 
 template<class Impl>
@@ -77,31 +97,48 @@ void DomainWallEOFAFermion<Impl>::M5Ddag(const FermionField& psi_i, const Fermio
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase* grid = psi_i.Grid();
   int Ls = this->Ls;
-
-  auto psi = psi_i.View();
-  auto phi = phi_i.View();
-  auto chi = chi_i.View();
-  assert(phi.Checkerboard() == psi.Checkerboard());
+  assert(phi_i.Checkerboard() == psi_i.Checkerboard());
 
   // Flops = 6.0*(Nc*Ns) *Ls*vol
   this->M5Dcalls++;
-  this->M5Dtime -= usecond();
 
-  auto nloop=grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
+  auto pdiag = &diag[0];
+  auto pupper = &upper[0];
+  auto plower = &lower[0];
+
+  auto M5Dinner = [=] accelerator_only (uint64_t ss, auto psi, auto phi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
-    auto ss=sss*Ls;
     for(int s=0; s<Ls; s++){
       spinor tmp1, tmp2;
       uint64_t idx_u = ss+((s+1)%Ls);
       uint64_t idx_l = ss+((s+Ls-1)%Ls);
       spProj5p(tmp1, psi(idx_u));
       spProj5m(tmp2, psi(idx_l));
-      coalescedWrite(chi[ss+s], diag[s]*phi(ss+s) + upper[s]*tmp1 + lower[s]*tmp2);
+      coalescedWrite(chi[ss+s], pdiag[s]*phi(ss+s) + pupper[s]*tmp1 + plower[s]*tmp2);
     }
-  });
+  };
 
-  this->M5Dtime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto phi = phi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->M5Dtime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+    this->M5Dtime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto phi = phi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        M5Dinner(ss,psi,phi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -109,8 +146,6 @@ void DomainWallEOFAFermion<Impl>::MooeeInv(const FermionField& psi_i, FermionFie
 {
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase* grid = psi_i.Grid();
-  auto psi=psi_i.View();
-  auto chi=chi_i.View();
   int Ls = this->Ls;
 
   auto plee  = & this->lee[0];
@@ -121,10 +156,8 @@ void DomainWallEOFAFermion<Impl>::MooeeInv(const FermionField& psi_i, FermionFie
   auto pueem = & this->ueem[0];
 
   this->MooeeInvCalls++;
-  this->MooeeInvTime -= usecond();
-  uint64_t nloop=grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
-    auto ss=sss*Ls;
+
+  auto MooeeInvinner = [=] accelerator_only (uint64_t ss, auto psi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1,tmp2;
 
@@ -155,8 +188,27 @@ void DomainWallEOFAFermion<Impl>::MooeeInv(const FermionField& psi_i, FermionFie
       spProj5m(tmp1, chi(ss+s+1));
       coalescedWrite(chi[ss+s], chi(ss+s) - puee[s]*tmp1);
     }
-  });
-  this->MooeeInvTime += usecond();
+  };
+
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+    this->MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+  }
 }
 
 template<class Impl>
@@ -164,11 +216,8 @@ void DomainWallEOFAFermion<Impl>::MooeeInvDag(const FermionField& psi_i, Fermion
 {
   chi_i.Checkerboard() = psi_i.Checkerboard();
   GridBase* grid = psi_i.Grid();
-  auto psi = psi_i.View();
-  auto chi = chi_i.View();
   int Ls = this->Ls;
-
-  assert(psi.Checkerboard() == psi.Checkerboard());
+  assert(psi_i.Checkerboard() == psi_i.Checkerboard());
 
   Vector<Coeff_t> ueec(Ls);
   Vector<Coeff_t> deec(Ls+1);
@@ -185,43 +234,65 @@ void DomainWallEOFAFermion<Impl>::MooeeInvDag(const FermionField& psi_i, Fermion
   }
   deec[Ls] = conjugate(this->dee[Ls]);
 
+  auto pueec = &ueec[0];
+  auto pdeec = &deec[0];
+  auto pleec = &leec[0];
+  auto pueemc = &ueemc[0];
+  auto pleemc = &leemc[0];
+
   this->MooeeInvCalls++;
-  this->MooeeInvTime -= usecond();
-  auto nloop = grid->oSites()/Ls;
-  accelerator_for(sss,nloop,Simd::Nsimd(),{
+
+  auto MooeeInvinner = [=] accelerator_only (uint64_t ss, auto psi, auto chi) mutable {
     typedef decltype(coalescedRead(psi[0])) spinor;
     spinor tmp1,tmp2;
-    auto ss=sss*Ls;
 
     // Apply (U^{\prime})^{-dagger}
     coalescedWrite(chi[ss], psi(ss));
     for(int s=1; s<Ls; s++){
       spProj5m(tmp1, chi(ss+s-1));
-      coalescedWrite(chi[ss+s], psi(ss+s) - ueec[s-1]*tmp1);
+      coalescedWrite(chi[ss+s], psi(ss+s) - pueec[s-1]*tmp1);
     }
 
     // U_m^{-\dagger}
     for(int s=0; s<Ls-1; s++){
       spProj5p(tmp1, chi(ss+s));
-      coalescedWrite(chi[ss+Ls-1], chi(ss+Ls-1) - ueemc[s]*tmp1);
+      coalescedWrite(chi[ss+Ls-1], chi(ss+Ls-1) - pueemc[s]*tmp1);
     }
 
     // L_m^{-\dagger} D^{-dagger}
     for(int s=0; s<Ls-1; s++){
       spProj5m(tmp1, chi(ss+Ls-1));
-      coalescedWrite(chi[ss+s] ,(1.0/deec[s])*chi(ss+s) - (leemc[s]/deec[Ls-1])*tmp1);
+      coalescedWrite(chi[ss+s] ,(1.0/pdeec[s])*chi(ss+s) - (pleemc[s]/pdeec[Ls-1])*tmp1);
     }
     spProj5p(tmp2, chi(ss+Ls-1));
-    coalescedWrite(chi[ss+Ls-1], (1.0/deec[Ls-1])*tmp1 + (1.0/deec[Ls])*tmp2);
+    coalescedWrite(chi[ss+Ls-1], (1.0/pdeec[Ls-1])*tmp1 + (1.0/pdeec[Ls])*tmp2);
 
     // Apply L^{-dagger}
     for(int s=Ls-2; s>=0; s--){
       spProj5p(tmp1, chi(ss+s+1));
-      coalescedWrite(chi[ss+s],chi(ss+s) - leec[s]*tmp1);
+      coalescedWrite(chi[ss+s],chi(ss+s) - pleec[s]*tmp1);
     }
-  });
+  };
 
-  this->MooeeInvTime += usecond();
+  if( chi_i.list_is_unset() ) {
+    auto psi = psi_i.View();
+    auto chi = chi_i.View();
+    uint64_t nloop = grid->oSites()/Ls;
+    this->MooeeInvTime-=usecond();
+    accelerator_for(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=sss*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+    this->MooeeInvTime+=usecond();
+  } else if ( chi_i.get_list_size()!=0 ) {
+    auto psi = psi_i.ViewList();
+    auto chi = chi_i.ViewList();
+    uint64_t nloop = chi.size();
+    accelerator_forNB(sss,nloop,Simd::Nsimd(),{
+        uint64_t ss=chi.get_index(sss)*Ls;
+        MooeeInvinner(ss,psi,chi);
+      });
+  }
 }
 
 NAMESPACE_END(Grid);
