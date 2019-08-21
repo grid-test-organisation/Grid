@@ -27,6 +27,13 @@ Author: Gianluca Filaci <g.filaci@ed.ac.uk>
     /*  END LEGAL */
 #include <Grid/Grid.h>
 
+// ACTIONS:
+#define DWF
+//#define MOBIUS
+//#define DWF_EOFA
+//#define MOBIUS_EOFA
+//#define MOBIUS_EOFA_NOSHIFT
+
 //#define TEST_SERIAL
 
 using namespace std;
@@ -71,8 +78,7 @@ int main (int argc, char ** argv)
 
   const int ncall=1000;
   double t0,t1;
-  
-  RealD mass=0.1;
+
   RealD M5  =1.8;
   
   GridParallelRNG RNG5(FGrid); RNG5.SeedFixedIntegers(seeds5);
@@ -97,11 +103,23 @@ int main (int argc, char ** argv)
   auto ref = r_o;
   auto tmp_o = r_o;
   
+#ifdef DWF
   typedef DomainWallFermionR FermionOp;
-  FermionOp Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5);
-  // typedef MobiusFermionR FermionOp;
-  // FermionOp Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,M5,1.5,0.5);
-  
+  FermionOp Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,0.1,M5);
+#elif defined MOBIUS
+  typedef MobiusFermionR FermionOp;
+  FermionOp Dw(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,0.1,M5,1.5,0.5);
+#elif defined DWF_EOFA
+  typedef DomainWallEOFAFermionR FermionOp;
+  FermionOp Dw(Umu, *FGrid, *FrbGrid, *UGrid, *UrbGrid, 0.1, 0.5, 1.0, 0.1234, 1, M5);
+#elif defined MOBIUS_EOFA
+  typedef MobiusEOFAFermionR FermionOp;
+  FermionOp Dw(Umu, *FGrid, *FrbGrid, *UGrid, *UrbGrid, 0.1, 0.5, 1.0, 0.1234, 1, M5, 2.5, 1.5);
+#elif defined MOBIUS_EOFA_NOSHIFT
+  typedef MobiusEOFAFermionR FermionOp;
+  FermionOp Dw(Umu, *FGrid, *FrbGrid, *UGrid, *UrbGrid, 0.1, 0.5, 1.0, 0, 1, M5, 2.5, 1.5);
+#endif
+
 #define PRINT(r,A) \
   if(default_latt[0]==4) {\
     r_eo = Zero(); \
